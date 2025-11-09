@@ -42,8 +42,8 @@
   const username = ref('')
   const password = ref('')
   
-  username.value = 'GSkzin'
-  password.value = '2025@GSkz!n@81'
+  username.value = ''
+  password.value = ''
   
   const handleSubmit = () => {
     if (username.value && password.value) {
