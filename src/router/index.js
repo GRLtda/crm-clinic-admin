@@ -28,6 +28,14 @@ const routes = [
           title: 'Dashboard' // 👈 MUDANÇA AQUI
         }
       },
+      {
+        path: '/invitations',
+        name: 'invitations-list',
+        component: () => import('../views/InvitationsView.vue'),
+        meta: {
+          title: 'Convites'
+        }
+      },
       // Rota de Usuários
       {
         path: '/users',

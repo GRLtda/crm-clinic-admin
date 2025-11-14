@@ -1,59 +1,75 @@
 <template>
-    <aside class="admin-sidebar" :class="{ 'is-open': layoutStore.isSidebarOpen }">
-      <div class="sidebar-header">
-        <a href="/" class="logo">
-          <Briefcase :size="28" />
-          <span class="logo-text">CRM Admin</span>
-        </a>
-        <button class="sidebar-close-button" @click="layoutStore.closeSidebar">
-          <X :size="24" />
-        </button>
-      </div>
-  
-      <nav class="sidebar-nav">
-        <ul class="nav-list">
-          <li v-for="link in navLinks" :key="link.name" class="nav-item">
-            <RouterLink :to="link.path" class="nav-link" @click="layoutStore.closeSidebar">
-              <component :is="link.icon" :size="20" class="nav-icon" />
-              <span class="nav-text">{{ link.name }}</span>
-            </RouterLink>
-          </li>
-        </ul>
-      </nav>
-    </aside>
-  </template>
-  
-  <script setup>
-  import { ref } from 'vue'
-  import { RouterLink } from 'vue-router'
-  import { useLayoutStore } from '../../stores/layout.js'
-  import { LayoutDashboard, Users, Briefcase, X, Building, MessageSquare } from 'lucide-vue-next'
-  
-  const layoutStore = useLayoutStore()
-  
-  const navLinks = ref([
-    {
-      name: 'Dashboard',
-      path: '/',
-      icon: LayoutDashboard
-    },
-    {
-      name: 'Usuários',
-      path: '/users',
-      icon: Users
-    },
-    {
-      name: 'Clínicas',
-      path: '/clinics',
-      icon: Building
-    },
-    {
+  <aside class="admin-sidebar" :class="{ 'is-open': layoutStore.isSidebarOpen }">
+    <div class="sidebar-header">
+      <a href="/" class="logo">
+        <Briefcase :size="28" />
+        <span class="logo-text">CRM Admin</span>
+      </a>
+      <button class="sidebar-close-button" @click="layoutStore.closeSidebar">
+        <X :size="24" />
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <ul class="nav-list">
+        <li v-for="link in navLinks" :key="link.name" class="nav-item">
+          <RouterLink :to="link.path" class="nav-link" @click="layoutStore.closeSidebar">
+            <component :is="link.icon" :size="20" class="nav-icon" />
+            <span class="nav-text">{{ link.name }}</span>
+          </RouterLink>
+        </li>
+      </ul>
+    </nav>
+  </aside>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import { useLayoutStore } from '../../stores/layout.js'
+// 👇 [MODIFICAÇÃO] Importar o UserPlus
+import { 
+  LayoutDashboard, 
+  Users, 
+  Briefcase, 
+  X, 
+  Building, 
+  MessageSquare,
+  UserPlus // 👈 Adicionado
+} from 'lucide-vue-next'
+
+const layoutStore = useLayoutStore()
+
+const navLinks = ref([
+  {
+    name: 'Dashboard',
+    path: '/',
+    icon: LayoutDashboard
+  },
+  {
+    name: 'Usuários',
+    path: '/users',
+    icon: Users
+  },
+  // 👇 [NOVO LINK]
+  {
+    name: 'Convites',
+    path: '/invitations',
+    icon: UserPlus
+  },
+  // 👇 [FIM NOVO LINK]
+  {
+    name: 'Clínicas',
+    path: '/clinics',
+    icon: Building
+  },
+  {
     name: 'WhatsApp',
     path: '/whatsapp',
     icon: MessageSquare
   }
-  ])
-  </script>
+])
+</script>
   
   <style scoped>
   .admin-sidebar {
