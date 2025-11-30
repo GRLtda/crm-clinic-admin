@@ -12,35 +12,35 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
   // ---------------------------------
   const loading = ref(true)
   const clinics = ref([])
-  
+
   const filters = reactive({
     search: ''
   })
-  
+
   const pagination = ref({
     total: 0,
     page: 1,
     pages: 1,
     limit: 12
   })
-  
+
   // 👇 NOVOS STATES (para a página de detalhes)
   const loadingDetail = ref(true)
   const selectedClinic = ref(null)
-  
+
   const authStore = useAuthStore()
   const toast = useToast()
 
   // ---------------------------------
   // Actions ⚡
   // ---------------------------------
-  
+
   /**
    * 🚀 Busca a lista de clínicas (paginada)
    */
   async function fetchClinics(page = 1) {
     loading.value = true
-    
+
     const params = {
       page: page,
       limit: pagination.value.limit
@@ -50,11 +50,11 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     }
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/clinics`, { 
+      const response = await axios.get(`${API_BASE_URL}/clinics`, {
         params: params,
         headers: authStore.authHeaders
       })
-      
+
       const data = response.data
       clinics.value = data.data
       pagination.value = {
@@ -73,7 +73,7 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
       loading.value = false
     }
   }
-  
+
   async function setSearchFilter(newSearch) {
     filters.search = newSearch
     await fetchClinics(1) // Reseta para a página 1
@@ -93,7 +93,7 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
         headers: authStore.authHeaders
       })
       selectedClinic.value = response.data
-      
+
     } catch (err) {
       console.error(`Erro ao buscar clínica ${id}:`, err)
       toast.error('Não foi possível carregar os detalhes da clínica.')
@@ -107,6 +107,27 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     selectedClinic.value = null
   }
 
+  // 👇 NOVA AÇÃO (para atualizar o status da assinatura)
+  async function updateSubscriptionStatus(id, status) {
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/clinics/${id}/subscription`, { status }, {
+        headers: authStore.authHeaders
+      })
+
+      // Atualiza o estado local se a clínica estiver selecionada
+      if (selectedClinic.value && selectedClinic.value._id === id) {
+        selectedClinic.value.subscriptionStatus = response.data.subscriptionStatus
+      }
+
+      toast.success('Status da assinatura atualizado com sucesso!')
+      return true
+    } catch (err) {
+      console.error(`Erro ao atualizar status da assinatura:`, err)
+      toast.error('Erro ao atualizar status.')
+      return false
+    }
+  }
+
   // ---------------------------------
   // Exportar 📤
   // ---------------------------------
@@ -117,11 +138,12 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     pagination,
     fetchClinics,
     setSearchFilter,
-    
+
     // 👇 Exportar novos itens
     loadingDetail,
     selectedClinic,
     fetchClinicById,
-    clearSelectedClinic
+    clearSelectedClinic,
+    updateSubscriptionStatus
   }
 })
