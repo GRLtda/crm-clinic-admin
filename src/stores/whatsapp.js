@@ -14,9 +14,9 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
   const status = ref('disconnected') // 'connected', 'qrcode', 'creating_qr', 'disconnected'
   const qrCodeData = ref(null) // O 'data:image/png;base64,...'
   const sending = ref(false) // Carregamento do form de envio
-  
+
   const pollingInterval = ref(null) // ID do nosso setInterval
-  
+
   const authStore = useAuthStore()
   const toast = useToast()
 
@@ -44,21 +44,23 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
       const response = await axios.get(`${API_BASE_URL}/whatsapp/qrcode`, {
         headers: authStore.authHeaders
       })
-      
-      const data = response.data
-      status.value = data.status
 
-      if (data.status === 'connected') {
+      const data = response.data
+      // Normaliza o status para lowercase (backend pode enviar 'CONNECTED' ou 'connected')
+      const normalizedStatus = data.status?.toLowerCase() || 'disconnected'
+      status.value = normalizedStatus
+
+      if (normalizedStatus === 'connected') {
         qrCodeData.value = null
         stopPolling() // Se conectou, para de verificar
-      } 
-      else if (data.status === 'qrcode') {
+      }
+      else if (normalizedStatus === 'qrcode') {
         qrCodeData.value = data.qrCode
         // Se estamos mostrando um QR Code, iniciamos o polling
         // para saber quando ele foi lido (virar 'connected')
         startPollingStatus()
       }
-      else if (data.status === 'creating_qr') {
+      else if (normalizedStatus === 'creating_qr') {
         qrCodeData.value = null
         // Backend está gerando, tenta de novo em 5s
         setTimeout(() => checkConnection(), 5000)
@@ -77,7 +79,7 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
       loading.value = false
     }
   }
-  
+
   /**
    * polling (GET /status)
    * Usado APENAS quando um QR code está sendo exibido,
@@ -105,7 +107,7 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
    */
   function startPollingStatus() {
     if (pollingInterval.value) return // Já está rodando
-    
+
     // console.log('WA Polling Iniciado');
     pollingInterval.value = setInterval(() => {
       pollStatusOnly()
@@ -120,10 +122,10 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
       toast.error('Número e mensagem são obrigatórios.')
       return false
     }
-    
+
     sending.value = true
     try {
-      await axios.post(`${API_BASE_URL}/whatsapp/send-message`, 
+      await axios.post(`${API_BASE_URL}/whatsapp/send`,
         { to, message },
         { headers: authStore.authHeaders }
       )
@@ -154,7 +156,7 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
       status.value = 'disconnected'
       // Busca um novo QR Code
       await checkConnection()
-      
+
     } catch (err) {
       console.error('Erro ao desconectar:', err)
       toast.error('Não foi possível desconectar.')
@@ -171,7 +173,7 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
     status,
     qrCodeData,
     sending,
-    
+
     checkConnection,
     stopPolling,
     sendMessage,

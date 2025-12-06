@@ -11,5 +11,8 @@ export default defineConfig({
       // 👇 Garanta que esta seção 'resolve: { alias: ... }' existe
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  server: {
+    port: 5174
   }
 })
