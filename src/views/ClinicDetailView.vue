@@ -85,26 +85,26 @@
             <h4>Endereço</h4>
             <div class="info-item">
               <span class="label">CEP</span>
-              <span class="value" :class="{ 'placeholder': !clinic.address.cep }">
-                {{ clinic.address.cep || 'Não informado' }}
+              <span class="value" :class="{ 'placeholder': !clinic.address?.cep }">
+                {{ clinic.address?.cep || 'Não informado' }}
               </span>
             </div>
             <div class="info-item">
               <span class="label">Logradouro</span>
-              <span class="value" :class="{ 'placeholder': !clinic.address.street }">
-                {{ clinic.address.street || 'Não informado' }}, {{ clinic.address.number || 'S/N' }}
+              <span class="value" :class="{ 'placeholder': !clinic.address?.street }">
+                {{ clinic.address?.street || 'Não informado' }}, {{ clinic.address?.number || 'S/N' }}
               </span>
             </div>
             <div class="info-item">
               <span class="label">Bairro</span>
-              <span class="value" :class="{ 'placeholder': !clinic.address.district }">
-                {{ clinic.address.district || 'Não informado' }}
+              <span class="value" :class="{ 'placeholder': !clinic.address?.district }">
+                {{ clinic.address?.district || 'Não informado' }}
               </span>
             </div>
             <div class="info-item">
               <span class="label">Cidade / Estado</span>
-              <span class="value" :class="{ 'placeholder': !clinic.address.city }">
-                {{ clinic.address.city || '?' }} / {{ clinic.address.state || '?' }}
+              <span class="value" :class="{ 'placeholder': !clinic.address?.city }">
+                {{ clinic.address?.city || '?' }} / {{ clinic.address?.state || '?' }}
               </span>
             </div>
           </div>
@@ -115,20 +115,20 @@
             <h4>Proprietário (Owner)</h4>
             <div class="info-item">
               <span class="label">Nome</span>
-              <span class="value" :class="{ 'placeholder': !clinic.owner.name }">
-                {{ clinic.owner.name || 'Não informado' }}
+              <span class="value" :class="{ 'placeholder': !clinic.owner?.name }">
+                {{ clinic.owner?.name || 'Não informado' }}
               </span>
             </div>
             <div class="info-item">
               <span class="label">Email</span>
-              <span class="value" :class="{ 'placeholder': !clinic.owner.email }">
-                {{ clinic.owner.email || 'Não informado' }}
+              <span class="value" :class="{ 'placeholder': !clinic.owner?.email }">
+                {{ clinic.owner?.email || 'Não informado' }}
               </span>
             </div>
             <div class="info-item">
               <span class="label">Telefone</span>
-              <span class="value" :class="{ 'placeholder': !clinic.owner.phone }">
-                {{ clinic.owner.phone || 'Não informado' }}
+              <span class="value" :class="{ 'placeholder': !clinic.owner?.phone }">
+                {{ clinic.owner?.phone || 'Não informado' }}
               </span>
             </div>
           </div>

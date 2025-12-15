@@ -18,7 +18,7 @@
         </div>
         <div class="info-item">
           <span class="label">Proprietário(a)</span>
-          <span class="value">{{ clinic.owner.name }}</span>
+          <span class="value">{{ clinic.owner?.name || 'Não definido' }}</span>
         </div>
         <div class="info-item">
           <span class="label">CNPJ</span>

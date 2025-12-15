@@ -8,6 +8,14 @@
         </p>
   
         <FormInput
+          v-model="form.name"
+          label="Nome do Proprietário"
+          type="text"
+          placeholder="Nome Completo"
+          required
+        />
+
+        <FormInput
           v-model="form.email"
           label="E-mail do Proprietário (Owner)"
           type="email"
@@ -61,6 +69,7 @@
   const store = useInvitationsStore()
   
   const form = reactive({
+    name: '',
     email: '',
     phone: '',
     plan: 'basic' // Default plan
@@ -74,6 +83,7 @@
   
   const handleSubmit = async () => {
     const invitation = await store.createInvitation(
+      form.name,
       form.email,
       form.phone,
       form.plan
@@ -83,6 +93,7 @@
       emit('success', invitation) // Passa o convite (com token) para o pai
       emit('close')
       // Reseta o formulário
+      form.name = ''
       form.email = ''
       form.phone = ''
       form.plan = 'basic'

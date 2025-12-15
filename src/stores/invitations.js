@@ -12,33 +12,33 @@ export const useInvitationsStore = defineStore('invitations-admin', () => {
   // ---------------------------------
   const loadingList = ref(true)
   const loadingCreate = ref(false)
-  
+
   const invitations = ref([])
-  
+
   const filters = reactive({
     status: 'pending' // Default to 'pending'
   })
-  
+
   const pagination = ref({
     total: 0,
     page: 1,
     pages: 1,
     limit: 15 // Set a reasonable limit
   })
-  
+
   const authStore = useAuthStore()
   const toast = useToast()
 
   // ---------------------------------
   // Actions ⚡
   // ---------------------------------
-  
+
   /**
    * 🚀 Busca a lista de convites (paginada)
    */
   async function fetchInvitations(page = 1) {
     loadingList.value = true
-    
+
     const params = {
       page: page,
       limit: pagination.value.limit
@@ -48,11 +48,11 @@ export const useInvitationsStore = defineStore('invitations-admin', () => {
     }
 
     try {
-      const response = await axios.get(`${API_BASE_URL}/users/registro`, { 
+      const response = await axios.get(`${API_BASE_URL}/users/registro`, {
         params: params,
         headers: authStore.authHeaders
       })
-      
+
       const data = response.data
       invitations.value = data.data
       pagination.value = {
@@ -71,7 +71,7 @@ export const useInvitationsStore = defineStore('invitations-admin', () => {
       loadingList.value = false
     }
   }
-  
+
   /**
    * 🏃 Aplica o filtro de "status" e busca novamente
    */
@@ -83,18 +83,18 @@ export const useInvitationsStore = defineStore('invitations-admin', () => {
   /**
    * 🚀 Cria um novo convite
    */
-  async function createInvitation(email, phone, plan) {
+  async function createInvitation(name, email, phone, plan) {
     loadingCreate.value = true
     try {
-      const response = await axios.post(`${API_BASE_URL}/users/registro`, 
-        { email, phone, plan }, 
+      const response = await axios.post(`${API_BASE_URL}/users/registro`,
+        { name, email, phone, plan },
         { headers: authStore.authHeaders }
       )
-      
+
       toast.success(response.data.message || 'Convite criado com sucesso.')
-      
+
       // Retorna o convite (que inclui o token) para o modal
-      return response.data.invitation 
+      return response.data.invitation
 
     } catch (err) {
       console.error('Erro ao criar convite:', err)
@@ -105,7 +105,7 @@ export const useInvitationsStore = defineStore('invitations-admin', () => {
       loadingCreate.value = false
     }
   }
-  
+
   /**
    * ❌ Exclui um convite pendente
    */
@@ -114,12 +114,12 @@ export const useInvitationsStore = defineStore('invitations-admin', () => {
       await axios.delete(`${API_BASE_URL}/users/registro/${invitationId}`, {
         headers: authStore.authHeaders
       })
-      
+
       toast.success('Convite excluído.')
-      
+
       // Remove da lista local para atualização instantânea da UI
       invitations.value = invitations.value.filter(inv => inv._id !== invitationId)
-      
+
     } catch (err) {
       console.error('Erro ao excluir convite:', err)
       const errorMsg = err.response?.data?.message || 'Não foi possível excluir o convite.'

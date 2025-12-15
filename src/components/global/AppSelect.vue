@@ -37,7 +37,7 @@ defineProps({
     default: "", // Ex: "Todos"
   },
   icon: {
-    type: Object,
+    type: [Object, Function],
     default: null, // Ícone do Lucide (opcional)
   },
 });

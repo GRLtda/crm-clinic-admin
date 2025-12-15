@@ -90,7 +90,6 @@ const handleLogout = () => {
   height: 65px;
   padding: 0 1.5rem;
   background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
   z-index: 10;
   flex-shrink: 0;
 }

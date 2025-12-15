@@ -31,10 +31,7 @@
   <style scoped>
   .admin-layout {
     display: flex;
-    background-color: #f9fafb;
     position: relative;
-    
-    /* MUDANÇAS AQUI 👇 */
     height: 100vh; /* Trava a altura total da página */
     max-height: 100vh;
     overflow: hidden; /* Esconde o scrollbar principal do navegador */
@@ -45,12 +42,12 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    
-    /* MUDANÇA AQUI 👇 */
     height: 100vh; /* Garante que esta coluna ocupe toda a altura */
   }
   
   .page-content {
+    border: 1px solid #e5e7eb;
+    border-radius: 1rem 0 0 0rem;
     padding: 1.5rem;
     
     /* MUDANÇAS AQUI 👇 */

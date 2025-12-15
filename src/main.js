@@ -28,6 +28,9 @@ pinia.use(({ store }) => {
 app.use(pinia)
 app.use(router)
 
+import { setupAxiosInterceptors } from './utils/axios-setup'
+setupAxiosInterceptors(router)
+
 // Configuração do Toast
 app.use(Toast, {
   transition: 'Vue-Toastification__fade',
