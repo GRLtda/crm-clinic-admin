@@ -486,6 +486,7 @@ const sidebarSections = computed(() => {
     border-radius: 0%;
     width: 260px !important; 
     padding: 1rem !important;
+    background-color: white;
   }
 
   .sidebar.is-mobile-open {
