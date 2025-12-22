@@ -1,33 +1,35 @@
 <template>
     <transition name="modal-fade">
-      <div v-if="show" class="modal-backdrop" @click.self="close">
-        <div class="modal-content" :style="{ maxWidth: width }">
+      <SideDrawer v-if="show" :size="drawerSize" @close="close">
+        <template #header>
           <div class="modal-header">
             <h3 class="modal-title">
               <slot name="title">Título do Modal</slot>
             </h3>
-            <button class="modal-close-button" @click="close">
+            <button class="mobile-close-btn" @click="close">
               <X :size="20" />
             </button>
           </div>
+        </template>
   
-          <div class="modal-body">
-            <slot />
-          </div>
+        <!-- Default slot content -->
+        <slot />
   
+        <template #footer>
           <div v-if="$slots.footer" class="modal-footer">
             <slot name="footer" />
           </div>
-        </div>
-      </div>
+        </template>
+      </SideDrawer>
     </transition>
   </template>
   
   <script setup>
-  import { onMounted, onUnmounted } from 'vue'
+  import { onMounted, onUnmounted, computed } from 'vue'
   import { X } from 'lucide-vue-next'
+  import SideDrawer from './SideDrawer.vue'
   
-  defineProps({
+  const props = defineProps({
     show: {
       type: Boolean,
       default: false
@@ -43,6 +45,17 @@
   const close = () => {
     emit('close')
   }
+  
+  // Map width string to SideDrawer size
+  const drawerSize = computed(() => {
+    // Extract number from pixels string
+    const widthNum = parseInt(props.width) || 500
+  
+    if (widthNum <= 420) return 'sm'
+    if (widthNum <= 500) return 'md'
+    if (widthNum <= 700) return 'lg'
+    return 'xl'
+  })
   
   // Fechar com a tecla ESC
   const handleEscKey = (e) => {
@@ -61,28 +74,6 @@
   </script>
   
   <style scoped>
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 1rem;
-  }
-  
-  .modal-content {
-    width: 100%;
-    background-color: #fff;
-    border-radius: 0.75rem;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    max-height: 90vh;
-  }
-  
   .modal-header {
     display: flex;
     justify-content: space-between;
@@ -98,26 +89,6 @@
     margin: 0;
   }
   
-  .modal-close-button {
-    background: transparent;
-    border: none;
-    padding: 0.5rem;
-    margin: -0.5rem; /* Ajuste para área de clique */
-    border-radius: 50%;
-    color: #6b7280;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-  .modal-close-button:hover {
-    background-color: #f3f4f6;
-    color: #111827;
-  }
-  
-  .modal-body {
-    padding: 1.5rem;
-    overflow-y: auto;
-  }
-  
   .modal-footer {
     display: flex;
     justify-content: flex-end;
@@ -127,7 +98,7 @@
     border-top: 1px solid #e5e7eb;
   }
   
-  /* Animação de Fade */
+  /* Animação de Fade (wrapper) */
   .modal-fade-enter-active,
   .modal-fade-leave-active {
     transition: opacity 0.2s ease;
@@ -135,13 +106,5 @@
   .modal-fade-enter-from,
   .modal-fade-leave-to {
     opacity: 0;
-  }
-  .modal-fade-enter-active .modal-content,
-  .modal-fade-leave-active .modal-content {
-    transition: transform 0.2s ease;
-  }
-  .modal-fade-enter-from .modal-content,
-  .modal-fade-leave-to .modal-content {
-    transform: translateY(-20px);
   }
   </style>

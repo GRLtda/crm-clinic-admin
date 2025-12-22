@@ -23,21 +23,25 @@
         title="Clínicas Totais"
         :value="store.totals.totalClinics"
         :icon="Building"
+        :trend="clinicTrend"
       />
       <KPICard
         title="Usuários Totais"
         :value="store.totals.totalUsers"
         :icon="Users"
+        :trend="userTrend"
       />
       <KPICard
         title="Pacientes Totais"
         :value="store.totals.totalPatients"
         :icon="User"
+        :trend="patientTrend"
       />
       <KPICard
         title="Atendimentos Totais"
         :value="store.totals.totalAppointments"
         :icon="Calendar"
+        :trend="appointmentTrend"
       />
     </div>
     
@@ -46,23 +50,20 @@
     </div>
 
     <div v-else class="charts-grid">
-      <AreaChart
-        title="Novas Clínicas"
-        :categories="clinicChartData.categories"
-        :series="clinicChartData.series"
-      />
-      
+      <!-- Gráfico de Pacientes (Lateral) -->
       <AreaChart
         title="Novos Pacientes"
         :categories="patientChartData.categories"
         :series="patientChartData.series"
+        class="side-chart"
       />
 
+      <!-- Gráfico de Status (Lateral) -->
       <DoughnutChart
-        title="Status de Atendimentos (Período)"
+        title="Status de Atendimentos"
         :labels="appointmentChartData.labels"
         :series="appointmentChartData.series"
-        class="span-2"
+        class="side-chart"
       />
     </div>
   </div>
@@ -96,21 +97,40 @@ const changePeriod = (newPeriod) => {
   store.fetchSummary(newPeriod)
 }
 
-// --- Funções 'Computed' para transformar os dados para os gráficos ---
+// --- Cálculo de Trends --- (Crescimento no período)
+const calculateTrend = (totalAllTime, itemsInPeriod) => {
+  if (!totalAllTime || !itemsInPeriod) return 0
+  
+  // Soma os novos itens no período visualizado
+  const newInPeriod = itemsInPeriod.reduce((acc, curr) => acc + curr.count, 0)
+  
+  // Total anterior = Total atual - Novos no período
+  const previousTotal = totalAllTime - newInPeriod
 
-// Dados para o gráfico de Clínicas
-const clinicChartData = computed(() => {
-  const data = store.chartsData.newClinicsPerPeriod || []
-  return {
-    categories: data.map((item) => item.dateLabel),
-    series: [
-      {
-        name: 'Novas Clínicas',
-        data: data.map((item) => item.count)
-      }
-    ]
-  }
+  // Se o total anterior for 0 ou menor (ex: tudo é novo), crescimento de 100%
+  if (previousTotal <= 0) return 100 
+
+  // Cálculo de crescimento percentual
+  return Number(((newInPeriod / previousTotal) * 100).toFixed(1))
+}
+
+const clinicTrend = computed(() => {
+  return calculateTrend(store.totals.totalClinics, store.chartsData.newClinicsPerPeriod)
 })
+
+const userTrend = computed(() => {
+  return calculateTrend(store.totals.totalUsers, store.chartsData.newUsersPerPeriod)
+})
+
+const patientTrend = computed(() => {
+  return calculateTrend(store.totals.totalPatients, store.chartsData.newPatientsPerPeriod)
+})
+
+const appointmentTrend = computed(() => {
+  return calculateTrend(store.totals.totalAppointments, store.chartsData.appointmentStatusDistribution)
+})
+
+// --- Funções 'Computed' para transformar os dados para os gráficos ---
 
 // Dados para o gráfico de Pacientes
 const patientChartData = computed(() => {
@@ -142,49 +162,50 @@ const appointmentChartData = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem; /* 24px */
+  margin-bottom: 2rem;
 }
 
 .page-title {
-  font-size: 1.875rem; /* 30px */
+  font-family: var(--fonte-titulo);
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--preto);
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .period-filters {
   display: flex;
-  background-color: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem; /* 8px */
-  padding: 0.25rem; /* 4px */
+  background-color: #f3f4f6;
+  padding: 0.25rem;
+  border-radius: 0.75rem;
 }
 
 .filter-button {
   border: none;
   background-color: transparent;
-  padding: 0.5rem 1rem; /* 8px 16px */
-  border-radius: 0.375rem; /* 6px */
-  font-size: 0.875rem; /* 14px */
-  font-weight: 500;
-  color: #4b5563; /* Cinza */
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cinza-texto);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .filter-button:hover:not(:disabled) {
-  background-color: #f9fafb; /* Cinza bem claro */
-  color: #000;
+  color: var(--azul-principal);
+  background-color: rgba(255, 255, 255, 0.5);
 }
 
 .filter-button.active {
-  background-color: var(--color-primary, #0284c7);
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: var(--branco);
+  color: var(--azul-principal);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .filter-button:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -192,42 +213,39 @@ const appointmentChartData = computed(() => {
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem; /* 24px */
-  margin-bottom: 1.5rem;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 /* Grid de Gráficos */
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, 1fr); /* 2 colunas para os gráficos restantes */
   gap: 1.5rem;
 }
 
-/* Ocupa 2 colunas */
-.charts-grid .span-2 {
-  grid-column: span 2 / span 2;
+/* Gráfico menor ocupa 1 coluna */
+.side-chart {
+  grid-column: span 1;
 }
 
 /* Loading */
 .loading-overlay {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 5rem 0;
-  color: var(--color-primary, #0284c7);
+  padding: 4rem 0;
+  gap: 1rem;
+  color: var(--azul-principal);
 }
 
-/* Animação de Spin */
 .icon-spin {
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Responsividade */
@@ -238,8 +256,8 @@ const appointmentChartData = computed(() => {
   .charts-grid {
     grid-template-columns: 1fr;
   }
-  .charts-grid .span-2 {
-    grid-column: span 1 / span 1;
+  .side-chart {
+    grid-column: span 1;
   }
 }
 

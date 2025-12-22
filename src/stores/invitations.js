@@ -83,11 +83,11 @@ export const useInvitationsStore = defineStore('invitations-admin', () => {
   /**
    * 🚀 Cria um novo convite
    */
-  async function createInvitation(name, email, phone, plan) {
+  async function createInvitation(name, email, phone, plan, sendWelcomeMessage) {
     loadingCreate.value = true
     try {
       const response = await axios.post(`${API_BASE_URL}/users/registro`,
-        { name, email, phone, plan },
+        { name, email, phone, plan, sendWelcomeMessage },
         { headers: authStore.authHeaders }
       )
 

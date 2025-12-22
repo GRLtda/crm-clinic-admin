@@ -82,10 +82,6 @@ const router = createRouter({
  * 🛡️ Guarda de Navegação (Navigation Guard)
  */
 router.beforeEach((to, from, next) => {
-  // Define o título da aba do navegador
-  // (Vamos manter o sufixo ' - Admin' aqui)
-  document.title = to.meta.title ? `${to.meta.title} - CRM Admin` : 'CRM Admin'
-
   const authStore = useAuthStore()
 
   const requiresAuth = to.meta.requiresAuth

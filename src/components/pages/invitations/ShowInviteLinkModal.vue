@@ -56,7 +56,7 @@
     
     // Constrói a URL do frontend. Assume que o app de registro
     // está na mesma origem (ex: crm.com) e a rota é /register
-    const clientUrl = 'https://crm-clinica-sigma.vercel.app'
+    const clientUrl = 'https://agendadoutor.com'
     
     return `${clientUrl}/register?token=${props.invitation.token}`
   })

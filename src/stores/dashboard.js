@@ -23,16 +23,17 @@ export const useDashboardStore = defineStore('dashboard-admin', () => {
     period: '12m',
     newClinicsPerPeriod: [],
     newPatientsPerPeriod: [],
+    newUsersPerPeriod: [], // Adicionado
     appointmentStatusDistribution: []
   })
-  
+
   const authStore = useAuthStore()
   const toast = useToast()
 
   // ---------------------------------
   // Actions ⚡
   // ---------------------------------
-  
+
   /**
    * 🚀 Busca os dados de resumo da API
    * @param {string} period - '7d', '1m', '6m', '12m'
@@ -46,7 +47,7 @@ export const useDashboardStore = defineStore('dashboard-admin', () => {
         params: { period: period },
         headers: authStore.authHeaders
       })
-      
+
       // ✅ Sucesso
       const data = response.data
       totals.value = data.totals
@@ -56,7 +57,7 @@ export const useDashboardStore = defineStore('dashboard-admin', () => {
       // ❌ Erro
       console.error('Erro ao buscar resumo do dashboard:', err)
       toast.error('Não foi possível carregar os dados do dashboard.')
-      
+
       // Reseta para dados vazios em caso de erro
       totals.value = { totalClinics: 0, totalUsers: 0, totalPatients: 0, totalAppointments: 0 }
       chartsData.value = { period: period, newClinicsPerPeriod: [], newPatientsPerPeriod: [], appointmentStatusDistribution: [] }

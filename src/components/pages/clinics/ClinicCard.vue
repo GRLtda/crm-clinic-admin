@@ -7,7 +7,16 @@
         </div>
         <div class="info-header">
           <h3 class="clinic-name">{{ clinic.name }}</h3>
-          <span class="clinic-plan">{{ clinic.plan }}</span>
+          <div class="tags-row">
+            <span class="clinic-plan">{{ clinic.plan }}</span>
+            <span 
+              v-if="clinic.subscriptionStatus" 
+              class="status-tag"
+              :class="statusClasses[clinic.subscriptionStatus] || 'status-gray'"
+            >
+              {{ statusLabels[clinic.subscriptionStatus] || clinic.subscriptionStatus }}
+            </span>
+          </div>
         </div>
       </div>
   
@@ -19,6 +28,12 @@
         <div class="info-item">
           <span class="label">Proprietário(a)</span>
           <span class="value">{{ clinic.owner?.name || 'Não definido' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Localização</span>
+          <span class="value">
+            {{ clinic.address?.city ? `${clinic.address.city} - ${clinic.address.state}` : 'Não informada' }}
+          </span>
         </div>
         <div class="info-item">
           <span class="label">CNPJ</span>
@@ -49,6 +64,28 @@
   const formatDate = (dateString) => {
     const options = { day: '2-digit', month: '2-digit', year: 'numeric' }
     return new Date(dateString).toLocaleDateString('pt-BR', options)
+  }
+
+  const statusLabels = {
+    active: 'Ativo',
+    past_due: 'Atrasado',
+    canceled: 'Cancelado',
+    incomplete: 'Incompleto',
+    incomplete_expired: 'Expirado',
+    trialing: 'Em Teste',
+    unpaid: 'Não Pago',
+    lifetime: 'Vitalício'
+  }
+
+  const statusClasses = {
+    active: 'status-green',
+    past_due: 'status-orange',
+    canceled: 'status-red',
+    incomplete: 'status-gray',
+    incomplete_expired: 'status-gray',
+    trialing: 'status-blue',
+    unpaid: 'status-red',
+    lifetime: 'status-purple'
   }
   </script>
   
@@ -100,6 +137,9 @@
   
   .info-header {
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
   }
   .clinic-name {
     font-size: 1.125rem;
@@ -110,8 +150,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .tags-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
   .clinic-plan {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--color-primary, #0284c7);
     background-color: var(--color-primary-light, #e0f2fe);
@@ -119,6 +165,21 @@
     border-radius: 99px;
     text-transform: capitalize;
   }
+  
+  .status-tag {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.125rem 0.5rem;
+    border-radius: 99px;
+    text-transform: capitalize;
+  }
+
+  .status-green { color: #166534; background-color: #dcfce7; }
+  .status-blue { color: #1e40af; background-color: #dbeafe; }
+  .status-orange { color: #9a3412; background-color: #ffedd5; }
+  .status-red { color: #991b1b; background-color: #fee2e2; }
+  .status-gray { color: #374151; background-color: #f3f4f6; }
+  .status-purple { color: #6b21a8; background-color: #f3e8ff; border: 1px solid #d8b4fe; }
   
   .card-body {
     padding: 0 1.5rem 1.5rem;

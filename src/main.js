@@ -8,7 +8,7 @@ import router from './router'
 import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 
-import VueApexCharts from 'vue3-apexcharts'
+
 
 // CSS
 import './css/normalize.css'
@@ -17,6 +17,9 @@ import './css/custom-toast.css'
 
 // Diretivas
 import vClickOutside from './directives/click-outside.js'
+import { phoneMask } from './directives/phone-mask.js'
+import { cpfMask } from './directives/cpf-mask.js'
+import { cnpjMask } from './directives/cnpj-mask.js'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -51,7 +54,10 @@ app.use(Toast, {
 })
 
 app.directive('click-outside', vClickOutside)
+app.directive('phone-mask', phoneMask)
+app.directive('cpf-mask', cpfMask)
+app.directive('cnpj-mask', cnpjMask)
 
-app.use(VueApexCharts)
+
 
 app.mount('#app')

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useLayoutStore } from '@/stores/layout' // Store de layout do Admin
 import { RouterLink, useRoute } from 'vue-router'
@@ -11,7 +11,8 @@ import {
   Building,
   MessageSquare,
   ChevronDown,
-  Briefcase
+  Briefcase,
+  MoreHorizontal
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -21,8 +22,7 @@ const props = defineProps({
   }
 })
 
-// Emits para manter compatibilidade se o Layout pai quiser controlar, 
-// mas usaremos local ou store também.
+// Emits para manter compatibilidade
 const emit = defineEmits(['close', 'toggle-collapse'])
 
 const authStore = useAuthStore()
@@ -35,6 +35,14 @@ const isClinicDropdownOpen = ref(false)
 
 // Estado para controlar quais menus estão expandidos
 const expandedItems = ref([])
+
+// Refs para o indicador flutuante
+const sidebarNavRef = ref(null)
+const indicatorStyle = ref({
+  top: '0px',
+  height: '0px',
+  opacity: 0
+})
 
 const toggleExpand = (key) => {
   if (props.isCollapsed) return
@@ -53,11 +61,40 @@ const isParentActive = (children) => {
   return children.some(child => route.path.startsWith(child.to))
 }
 
-// Watch na rota para fechar sidebar mobile
+// Atualiza posição do indicador
+const updateIndicator = () => {
+  nextTick(() => {
+    if (!sidebarNavRef.value) return
+    
+    // Procura por link ativo ou active-link (exato ou parcial)
+    const activeLink = sidebarNavRef.value.querySelector('.active-link, .nav-link.active')
+    
+    if (activeLink) {
+      const navRect = sidebarNavRef.value.getBoundingClientRect()
+      const linkRect = activeLink.getBoundingClientRect()
+      
+      indicatorStyle.value = {
+        top: `${linkRect.top - navRect.top}px`,
+        height: `${linkRect.height}px`,
+        opacity: 1
+      }
+    } else {
+      indicatorStyle.value = { ...indicatorStyle.value, opacity: 0 }
+    }
+  })
+}
+
+// Watch na rota para fechar sidebar mobile E atualizar indicador
 watch(() => route.path, () => {
   if (window.innerWidth <= 1024) {
     layoutStore.closeSidebar()
   }
+  updateIndicator()
+}, { immediate: true })
+
+// Atualizar ao montar
+onMounted(() => {
+  setTimeout(updateIndicator, 100)
 })
 
 // Mapeamento das Rotas do Admin no novo layout
@@ -94,11 +131,6 @@ const sidebarSections = computed(() => {
 </script>
 
 <template>
-  <!-- 
-    No Admin, usamos 'is-open' do layoutStore para mobile.
-    A prop 'isCollapsed' viria do pai para desktop (mini-sidebar), 
-    por padrão false se não passarem.
-  -->
   <aside 
     class="sidebar" 
     :class="{ 
@@ -107,17 +139,26 @@ const sidebarSections = computed(() => {
     }"
   >
     <div class="sidebar-header-wrapper">
-      <!-- Logo Area -->
       <div class="sidebar-header">
-        <div class="clinic-logo">
-           <!-- Ícone genérico do Admin ou Logo -->
-           <Briefcase :size="20" />
+        <div class="logo-container">
+           <!-- Logo Ícone + Texto (Colapsado esconde texto, Expandido mostra tudo) -->
+           <img src="/icon.png" alt="Agenda Doutor" class="brand-logo-icon" />
+           <span class="brand-text" v-show="!isCollapsed">Agenda Doutor</span>
         </div>
-        <h1 v-show="!isCollapsed" class="clinic-name">CRM Admin</h1>
       </div>
     </div>
 
-    <nav class="sidebar-nav">
+    <nav ref="sidebarNavRef" class="sidebar-nav">
+      <!-- Indicador flutuante que desliza -->
+      <div 
+        class="sliding-indicator" 
+        :style="{ 
+          top: indicatorStyle.top, 
+          height: indicatorStyle.height,
+          opacity: indicatorStyle.opacity 
+        }"
+      ></div>
+
       <div v-for="(section, sectionIndex) in sidebarSections" :key="sectionIndex" class="nav-section">
         <!-- Título da seção -->
         <div v-if="section.title && !isCollapsed" class="section-title">
@@ -170,6 +211,7 @@ const sidebarSections = computed(() => {
               :active-class="link.to === '/' ? '' : 'active-link'"
               :exact-active-class="link.to === '/' ? 'active-link' : ''"
             >
+              <!-- Usando componente dinamico para manter padrao -->
               <component :is="link.icon" :size="20" stroke-width="2" />
               <span v-show="!isCollapsed" class="nav-text">{{ link.text }}</span>
             </RouterLink>
@@ -178,8 +220,6 @@ const sidebarSections = computed(() => {
       </div>
     </nav>
   </aside>
-
-  <!-- Overlay Mobile -->
 </template>
 
 <style scoped>
@@ -188,7 +228,6 @@ const sidebarSections = computed(() => {
   flex-direction: column;
   width: 240px;
   padding: 1rem;
-  background-color: #ffffff; /* Atualizado para branco */
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease-in-out;
   overflow-x: hidden;
   border-top-right-radius: 1rem;
@@ -209,48 +248,45 @@ const sidebarSections = computed(() => {
 .sidebar-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center; /* Centraliza logo */
   padding: 0.5rem;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  height: 48px;
+}
+.sidebar:not(.is-collapsed) .sidebar-header {
+  justify-content: flex-start;
 }
 .sidebar:not(.is-collapsed) .sidebar-header:hover {
-  background-color: #f9fafb; /* Hover mais sutil no branco */
+  background-color: transparent; 
 }
 .sidebar.is-collapsed .sidebar-header {
   justify-content: center;
   padding: 0.5rem;
   cursor: default;
 }
-.clinic-logo {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 0.375rem;
-  background-color: var(--branco, #fff);
-  color: var(--azul-principal, #007bff);
+
+.logo-container {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1.1rem;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
+  gap: 0.75rem;
+  height: 100%;
 }
-.clinic-name {
-  font-family: inherit;
-  font-size: 1rem;
-  font-weight: 600;
+
+.brand-text {
+  font-family: var(--fonte-titulo);
+  font-weight: 700;
+  font-size: 1.125rem;
   color: var(--preto, #111827);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-grow: 1;
-  transition: opacity 0.25s ease;
+  letter-spacing: -0.02em;
 }
-.sidebar.is-collapsed .clinic-name {
-  opacity: 0;
+
+.brand-logo-icon {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
 }
 
 /* Navegação */
@@ -260,7 +296,23 @@ const sidebarSections = computed(() => {
   flex-direction: column;
   gap: 0;
   overflow-y: auto;
-  position: relative;
+  position: relative; /* Para o indicador flutuante */
+}
+
+/* Indicador flutuante que desliza */
+.sliding-indicator {
+  position: absolute;
+  left: 0;
+  width: 3px;
+  background-color: var(--azul-principal, #3b82f6);
+  border-radius: 0 2px 2px 0;
+  transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  pointer-events: none;
+  transform: scaleY(0.6);
+  transform-origin: center;
 }
 
 /* Scrollbar */
@@ -340,24 +392,24 @@ const sidebarSections = computed(() => {
   width: 0;
   display: none;
 }
-/* Hover */
+/* Hover suave */
 .nav-link:hover {
   background-color: #f0f2f5;
-  color: var(--azul-principal, #007bff);
+  color: var(--azul-principal, #3b82f6);
   padding-left: 0.875rem;
 }
 .nav-link:hover svg {
-  color: var(--azul-principal, #007bff);
+  color: var(--azul-principal, #3b82f6);
 }
 /* Ativo */
 .active-link, .nav-link.active {
   background-color: #eef2ff;
-  color: var(--azul-principal, #007bff);
+  color: var(--azul-principal, #3b82f6);
   font-weight: 600;
   border: 1px solid transparent;
 }
 .active-link svg, .nav-link.active svg {
-  color: var(--azul-principal, #007bff);
+  color: var(--azul-principal, #3b82f6);
   transform: scale(1);
 }
 
@@ -408,14 +460,16 @@ const sidebarSections = computed(() => {
 }
 .submenu-link:hover .submenu-icon,
 .active-child .submenu-icon {
-  color: var(--azul-principal, #007bff);
+  color: var(--azul-principal, #3b82f6);
 }
 .active-child {
-  color: var(--azul-principal, #007bff);
+  color: var(--azul-principal, #3b82f6);
   font-weight: 500;
   background-color: #f9fafb;
-  border-left-color: var(--azul-principal, #007bff);
+  border-left-color: var(--azul-principal, #3b82f6);
 }
+
+
 
 /* ------------------------- */
 /* RESPONSIVO (1024px)       */
@@ -428,8 +482,8 @@ const sidebarSections = computed(() => {
     z-index: 50;
     transform: translateX(-100%);
     box-shadow: none;
-    height: 100%;
-    /* No mobile, voltamos ao comportamento padrão expandido quando abrir */
+    height: 100vh;
+    border-radius: 0%;
     width: 260px !important; 
     padding: 1rem !important;
   }
@@ -439,7 +493,7 @@ const sidebarSections = computed(() => {
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
   }
   
-  /* Forçar exibição de elementos no mobile quando aberto, mesmo se isCollapsed estiver true (não deve acontecer mas garante) */
+  /* Forçar exibição de elementos no mobile quando aberto */
   .sidebar.is-mobile-open .nav-text,
   .sidebar.is-mobile-open .user-details,
   .sidebar.is-mobile-open .clinic-name,

@@ -71,6 +71,7 @@
   @media (max-width: 1024px) {
     .page-content {
       padding: 1rem;
+      border-radius: 0;
     }
   
     .sidebar-overlay {

@@ -4,8 +4,6 @@
       <button class="hamburger-button" @click="layoutStore.openSidebar">
         <Menu :size="24" />
       </button>
-
-      <h1 class="topbar-title">{{ pageTitle }}</h1>
     </div>
 
     <div class="topbar-right">

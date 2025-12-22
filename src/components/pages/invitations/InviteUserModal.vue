@@ -38,6 +38,13 @@
             :options="planOptions"
           />
         </div>
+
+        <div class="form-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="form.sendWelcomeMessage" />
+            Enviar mensagem de boas-vindas
+          </label>
+        </div>
   
         <div class="modal-footer">
           <button type="button" class="btn-secondary" @click="$emit('close')">
@@ -72,7 +79,8 @@
     name: '',
     email: '',
     phone: '',
-    plan: 'basic' // Default plan
+    plan: 'basic', // Default plan
+    sendWelcomeMessage: false
   })
   
   const planOptions = ref([
@@ -86,7 +94,8 @@
       form.name,
       form.email,
       form.phone,
-      form.plan
+      form.plan,
+      form.sendWelcomeMessage
     )
     
     if (invitation) {
@@ -97,6 +106,7 @@
       form.email = ''
       form.phone = ''
       form.plan = 'basic'
+      form.sendWelcomeMessage = false
     }
   }
   </script>
@@ -138,6 +148,71 @@
     margin-top: 0.5rem;
     background-color: transparent;
     border-top: none;
+  }
+
+  /* Checkbox Style */
+  .form-checkbox {
+    margin-bottom: 1.5rem;
+    padding-top: 0.5rem;
+  }
+  
+  .checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+  }
+
+  .checkbox-label:hover {
+    color: #1f2937;
+  }
+
+  /* Custom Checkbox Input */
+  .checkbox-label input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #fff;
+    margin: 0;
+    font: inherit;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 0.375rem;
+    display: grid;
+    place-content: center;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"]::before {
+    content: "";
+    width: 0.75rem;
+    height: 0.75rem;
+    transform: scale(0);
+    transition: 120ms transform ease-in-out;
+    box-shadow: inset 1em 1em white;
+    transform-origin: center;
+    /* Checkmark shape */
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  }
+
+  .checkbox-label input[type="checkbox"]:checked {
+    background-color: var(--color-primary, #0284c7);
+    border-color: var(--color-primary, #0284c7);
+  }
+
+  .checkbox-label input[type="checkbox"]:checked::before {
+    transform: scale(1);
+  }
+
+  .checkbox-label input[type="checkbox"]:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--color-primary, #0284c7);
   }
   
   /* Estilos de Botões (Baseado no LoginView) */
