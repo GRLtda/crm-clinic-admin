@@ -62,6 +62,14 @@ const routes = [
         }
       },
       {
+        path: '/subscriptions',
+        name: 'subscriptions-list',
+        component: () => import('../views/SubscriptionsView.vue'),
+        meta: {
+          title: 'Assinaturas'
+        }
+      },
+      {
         path: '/whatsapp',
         name: 'whatsapp-connection',
         component: () => import('../views/WhatsappView.vue'),

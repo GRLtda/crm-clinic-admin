@@ -12,7 +12,8 @@ import {
   MessageSquare,
   ChevronDown,
   Briefcase,
-  MoreHorizontal
+  MoreHorizontal,
+  CreditCard
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -114,6 +115,7 @@ const sidebarSections = computed(() => {
       { icon: Users, text: 'Usuários', to: '/users' },
       { icon: UserPlus, text: 'Convites', to: '/invitations' },
       { icon: Building, text: 'Clínicas', to: '/clinics' },
+      { icon: CreditCard, text: 'Assinaturas', to: '/subscriptions' },
     ]
   }
   
