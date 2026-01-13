@@ -23,21 +23,24 @@
           required
         />
   
-        <FormInput
+        <PhoneInputWithDDI
           v-model="form.phone"
-          label="Telefone"
-          type="tel"
-          placeholder="5511999998888"
+          v-model:countryCode="form.ddi"
+          label="Telefone com WhatsApp"
           required
         />
         
-        <div class="form-group">
-          <label class="form-label">Plano</label>
-          <AppSelect
-            v-model="form.plan"
-            :options="planOptions"
-          />
-        </div>
+        <StyledSelect
+          v-model="form.plan"
+          label="Plano"
+          :options="planOptions"
+        />
+
+        <StyledSelect
+          v-model="form.trialDays"
+          label="Período de Teste Gratuito"
+          :options="trialOptions"
+        />
 
         <div class="form-checkbox">
           <label class="checkbox-label">
@@ -65,7 +68,8 @@
   import { Loader2 } from 'lucide-vue-next'
   import AppModal from '../../global/AppModal.vue'
   import FormInput from '../../global/FormInput.vue'
-  import AppSelect from '../../global/AppSelect.vue'
+  import StyledSelect from '../../global/StyledSelect.vue'
+  import PhoneInputWithDDI from '../../global/PhoneInputWithDDI.vue'
   
   defineProps({
     show: Boolean
@@ -79,7 +83,9 @@
     name: '',
     email: '',
     phone: '',
+    ddi: '55', // Default Brazil
     plan: 'basic', // Default plan
+    trialDays: 0, // Default to no trial
     sendWelcomeMessage: false
   })
   
@@ -88,14 +94,25 @@
     { value: 'premium', label: 'Premium' },
     { value: 'enterprise', label: 'Enterprise' }
   ])
+
+  const trialOptions = ref([
+    { value: 0, label: 'Sem Teste (Padrão)' },
+    { value: 2, label: '2 Dias Grátis' },
+    { value: 7, label: '7 Dias Grátis' },
+    { value: 30, label: '30 Dias Grátis' }
+  ])
   
   const handleSubmit = async () => {
+    // Format phone with DDI
+    const fullPhone = `${form.ddi}${form.phone.replace(/\D/g, '')}`;
+
     const invitation = await store.createInvitation(
       form.name,
       form.email,
-      form.phone,
+      fullPhone,
       form.plan,
-      form.sendWelcomeMessage
+      form.sendWelcomeMessage,
+      form.trialDays
     )
     
     if (invitation) {
@@ -105,7 +122,9 @@
       form.name = ''
       form.email = ''
       form.phone = ''
+      form.ddi = '55'
       form.plan = 'basic'
+      form.trialDays = 0
       form.sendWelcomeMessage = false
     }
   }
@@ -144,8 +163,8 @@
   
   /* Sobrescreve o padding do footer do modal */
   .invite-form .modal-footer {
-    padding: 1.5rem 0 0; /* Remove padding lateral e superior */
-    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.3rem;
     background-color: transparent;
     border-top: none;
   }
