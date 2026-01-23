@@ -31,13 +31,14 @@
       </div>
   
       <AppPagination
-        v-if="!store.loading && store.pagination.totalPages > 1"
+        v-if="!store.loading && store.pagination.pages > 1"
         :current-page="store.pagination.page"
         :total-pages="store.pagination.pages"
         :total-items="store.pagination.total"
         :items-on-page="store.clinics.length"
         @page-changed="handlePageChange"
         class="pagination-footer"
+        label="clínicas"
       />
     </div>
   </template>

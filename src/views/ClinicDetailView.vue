@@ -22,7 +22,12 @@
           <h1 class="clinic-name">{{ clinic.name }}</h1>
           <span class="clinic-id">ID: {{ clinic._id }}</span>
           <div class="header-tags">
-            <span class="plan-tag">{{ clinic.plan }}</span>
+            <span class="plan-tag">
+              {{ clinic.plan }}
+              <button @click="openPlanModal" class="btn-edit-plan" title="Alterar Plano">
+                <Edit2 :size="12" />
+              </button>
+            </span>
             <span 
               v-if="clinic.subscriptionStatus" 
               class="status-tag"
@@ -171,6 +176,50 @@
       <h3>Clínica não encontrada</h3>
       <p>Não foi possível carregar os dados desta clínica.</p>
     </div>
+    <!-- SideDrawer de Alteração de Plano -->
+    <SideDrawer 
+      v-if="showPlanModal" 
+      @close="closePlanModal" 
+      size="sm"
+    >
+      <template #header>
+        <div class="drawer-header">
+          <h3>Alterar Plano</h3>
+          <!-- Botão de fechar mobile que o SideDrawer espera -->
+          <button @click="closePlanModal" class="mobile-close-btn">
+            <X :size="20" />
+          </button>
+        </div>
+      </template>
+
+      <div class="drawer-body-content">
+        <p class="drawer-description">Selecione o novo plano para esta clínica. O limite de médicos será atualizado imediatamente.</p>
+        
+        <div class="form-group">
+          <label>Novo Plano</label>
+          <select v-model="selectedPlan" class="form-select">
+            <template v-for="opt in planOptions" :key="opt.value">
+              <option :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </template>
+          </select>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="drawer-footer">
+          <button @click="closePlanModal" class="btn-cancel">Cancelar</button>
+          <button 
+            @click="handleUpdatePlan" 
+            class="btn-confirm"
+            :disabled="loadingAction || selectedPlan === clinic.plan"
+          >
+            {{ loadingAction ? 'Salvando...' : 'Salvar Alterações' }}
+          </button>
+        </div>
+      </template>
+    </SideDrawer>
   </div>
 </template>
 
@@ -178,13 +227,24 @@
 import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useClinicsStore } from '../stores/clinics.js'
-import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, XCircle } from 'lucide-vue-next'
+import SideDrawer from '../components/global/SideDrawer.vue'
+import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, XCircle, Edit2, X } from 'lucide-vue-next'
 
 const store = useClinicsStore()
 const route = useRoute()
 
 const clinic = computed(() => store.selectedClinic)
 const loadingAction = ref(false)
+
+// Estado do Modal de Edição de Plano
+const showPlanModal = ref(false)
+const selectedPlan = ref('')
+const planOptions = [
+  { value: 'basic', label: 'Básico' },
+  { value: 'premium', label: 'Premium' },
+  { value: 'enterprise', label: 'Enterprise' },
+  { value: 'enterprise_plus', label: 'Enterprise Plus' }
+]
 
 const statusLabels = {
   active: 'Ativo',
@@ -221,6 +281,32 @@ async function handleRemoveLifetime() {
   
   loadingAction.value = true
   await store.updateSubscriptionStatus(clinic.value._id, 'canceled')
+  loadingAction.value = false
+}
+
+function openPlanModal() {
+  selectedPlan.value = clinic.value.plan || 'basic'
+  showPlanModal.value = true
+}
+
+function closePlanModal() {
+  showPlanModal.value = false
+}
+
+async function handleUpdatePlan() {
+  if (!selectedPlan.value) return
+  if (selectedPlan.value === clinic.value.plan) {
+    closePlanModal()
+    return
+  }
+
+  if (!confirm(`Tem certeza que deseja alterar o plano para ${selectedPlan.value}?`)) return
+
+  loadingAction.value = true
+  const success = await store.updateClinicPlan(clinic.value._id, selectedPlan.value)
+  if (success) {
+    closePlanModal()
+  }
   loadingAction.value = false
 }
 
@@ -564,5 +650,117 @@ onUnmounted(() => {
   font-size: 0.875rem;
   color: #b91c1c;
   margin: 0;
+}
+/* Botão de Edição de Plano */
+.btn-edit-plan {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 0.5rem;
+  display: inline-flex;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.btn-edit-plan:hover {
+  opacity: 1;
+}
+
+/* Drawer Styles */
+.drawer-header {
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.drawer-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.drawer-body-content {
+  /* O padding já vem do componente SideDrawer, mas podemos ajustar se necessário */
+}
+.drawer-description {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.drawer-footer {
+  padding: 1.5rem;
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: auto; /* Empurra para baixo se tiver espaço sobrando */
+}
+
+/* Reutilizando form styles existentes */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.form-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.625rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #111827;
+  background-color: #fff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.btn-cancel {
+  padding: 0.5rem 1rem;
+  background-color: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-cancel:hover {
+  background-color: #f3f4f6;
+}
+
+.btn-confirm {
+  padding: 0.5rem 1rem;
+  background-color: #2563eb;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-confirm:hover {
+  background-color: #1d4ed8;
+}
+.btn-confirm:disabled {
+  background-color: #93c5fd;
+  cursor: not-allowed;
 }
 </style>

@@ -92,7 +92,8 @@
   const planOptions = ref([
     { value: 'basic', label: 'Basic' },
     { value: 'premium', label: 'Premium' },
-    { value: 'enterprise', label: 'Enterprise' }
+    { value: 'enterprise', label: 'Enterprise' },
+    { value: 'enterprise_plus', label: 'Enterprise Plus' }
   ])
 
   const trialOptions = ref([

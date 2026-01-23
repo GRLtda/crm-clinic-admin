@@ -128,6 +128,32 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     }
   }
 
+  async function updateClinicPlan(id, plan) {
+    console.log('[Store] updateClinicPlan called with:', { id, plan })
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/clinics/${id}/plan`, { plan }, {
+        headers: authStore.authHeaders
+      })
+
+      console.log('[Store] API Response:', response.data)
+
+      // Atualiza o estado local se a clínica estiver selecionada
+      if (selectedClinic.value && selectedClinic.value._id === id) {
+        console.log('[Store] Updating selectedClinic plan from', selectedClinic.value.plan, 'to', response.data.plan)
+        selectedClinic.value.plan = response.data.plan
+      } else {
+        console.warn('[Store] selectedClinic mismatch or null', { selected: selectedClinic.value, id })
+      }
+
+      toast.success('Plano atualizado com sucesso!')
+      return true
+    } catch (err) {
+      console.error(`Erro ao atualizar plano:`, err)
+      toast.error('Erro ao atualizar plano.')
+      return false
+    }
+  }
+
   // ---------------------------------
   // Exportar 📤
   // ---------------------------------
@@ -144,6 +170,7 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     selectedClinic,
     fetchClinicById,
     clearSelectedClinic,
-    updateSubscriptionStatus
+    updateSubscriptionStatus,
+    updateClinicPlan
   }
 })

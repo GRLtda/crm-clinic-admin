@@ -2,7 +2,7 @@
     <div class="pagination-container" v-if="totalPages > 1">
       <div class="total-info">
         Mostrando <strong>{{ itemsOnPage }}</strong> de
-        <strong>{{ totalItems }}</strong> usuários
+        <strong>{{ totalItems }}</strong> {{ label }}
       </div>
   
       <div class="controls">
@@ -55,6 +55,10 @@
       type: Number,
       required: true,
       default: 0
+    },
+    label: {
+      type: String,
+      default: 'itens'
     }
   })
   
