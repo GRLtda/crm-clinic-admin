@@ -44,6 +44,13 @@
 
         <div class="form-checkbox">
           <label class="checkbox-label">
+            <input type="checkbox" v-model="form.setupFeeWaived" />
+            Desativar Taxa de Setup
+          </label>
+        </div>
+
+        <div class="form-checkbox">
+          <label class="checkbox-label">
             <input type="checkbox" v-model="form.sendWelcomeMessage" />
             Enviar mensagem de boas-vindas
           </label>
@@ -86,6 +93,7 @@
     ddi: '55', // Default Brazil
     plan: 'basic', // Default plan
     trialDays: 0, // Default to no trial
+    setupFeeWaived: false, // Default to charging setup fee
     sendWelcomeMessage: false
   })
   
@@ -113,7 +121,8 @@
       fullPhone,
       form.plan,
       form.sendWelcomeMessage,
-      form.trialDays
+      form.trialDays,
+      form.setupFeeWaived
     )
     
     if (invitation) {
@@ -126,6 +135,7 @@
       form.ddi = '55'
       form.plan = 'basic'
       form.trialDays = 0
+      form.setupFeeWaived = false
       form.sendWelcomeMessage = false
     }
   }
