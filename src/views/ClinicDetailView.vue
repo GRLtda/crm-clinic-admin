@@ -193,17 +193,42 @@
       </template>
 
       <div class="drawer-body-content">
-        <p class="drawer-description">Selecione o novo plano para esta clínica. O limite de médicos será atualizado imediatamente.</p>
-        
-        <div class="form-group">
-          <label>Novo Plano</label>
-          <select v-model="selectedPlan" class="form-select">
-            <template v-for="opt in planOptions" :key="opt.value">
-              <option :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </template>
-          </select>
+        <div class="drawer-section">
+          <h4>Alterar Plano Base</h4>
+          <p class="drawer-description">Selecione o novo plano para esta clínica.</p>
+          <div class="form-group">
+            <label>Plano</label>
+            <select v-model="selectedPlan" class="form-select">
+              <template v-for="opt in planOptions" :key="opt.value">
+                <option :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+        <div class="drawer-section mt-6">
+          <h4>Overrides de Funcionalidades</h4>
+          <p class="drawer-description">Ative ou desative funcionalidades especificamente para esta clínica, ignorando o plano base.</p>
+          
+          <div class="overrides-list">
+             <div v-for="(enabled, key) in overrides.modules" :key="key" class="override-item">
+               <label class="toggle-switch">
+                  <input type="checkbox" v-model="overrides.modules[key]">
+                  <span class="slider round"></span>
+               </label>
+               <span class="override-label">{{ key }}</span>
+             </div>
+          </div>
+        </div>
+
+         <div class="drawer-section mt-6">
+          <h4>Overrides de Limites</h4>
+          <div class="form-group mb-2">
+            <label>Médicos Extra (0 = Padrão do Plano)</label>
+            <input type="number" v-model.number="overrides.limits.doctors" class="form-input">
+          </div>
         </div>
       </div>
 
@@ -239,6 +264,11 @@ const loadingAction = ref(false)
 // Estado do Modal de Edição de Plano
 const showPlanModal = ref(false)
 const selectedPlan = ref('')
+const overrides = ref({
+  modules: { workflows: false, finance: false, whatsapp: false, ai_reports: false },
+  limits: { doctors: 0 }
+})
+
 const planOptions = [
   { value: 'basic', label: 'Básico' },
   { value: 'premium', label: 'Premium' },
@@ -286,6 +316,13 @@ async function handleRemoveLifetime() {
 
 function openPlanModal() {
   selectedPlan.value = clinic.value.plan || 'basic'
+  
+  // Init overrides based on clinic data or defaults
+  if (clinic.value.planOverrides) {
+     overrides.value.modules = { ...overrides.value.modules, ...(clinic.value.planOverrides.modules || {}) }
+     overrides.value.limits = { ...overrides.value.limits, ...(clinic.value.planOverrides.limits || {}) }
+  }
+  
   showPlanModal.value = true
 }
 
@@ -294,19 +331,19 @@ function closePlanModal() {
 }
 
 async function handleUpdatePlan() {
-  if (!selectedPlan.value) return
-  if (selectedPlan.value === clinic.value.plan) {
-    closePlanModal()
-    return
-  }
-
-  if (!confirm(`Tem certeza que deseja alterar o plano para ${selectedPlan.value}?`)) return
+  if (!confirm(`Tem certeza que deseja salvar as alterações de plano e overrides?`)) return
 
   loadingAction.value = true
-  const success = await store.updateClinicPlan(clinic.value._id, selectedPlan.value)
-  if (success) {
-    closePlanModal()
+  
+  // 1. Update Plan if changed
+  if (selectedPlan.value && selectedPlan.value !== clinic.value.plan) {
+      await store.updateClinicPlan(clinic.value._id, selectedPlan.value)
   }
+
+  // 2. Update Overrides (We need a new store action for this)
+  await store.updateClinicOverrides(clinic.value._id, overrides.value);
+
+  closePlanModal()
   loadingAction.value = false
 }
 

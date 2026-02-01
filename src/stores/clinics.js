@@ -150,6 +150,24 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     } catch (err) {
       console.error(`Erro ao atualizar plano:`, err)
       toast.error('Erro ao atualizar plano.')
+    }
+  }
+
+  async function updateClinicOverrides(id, overrides) {
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/clinics/${id}/overrides`, { overrides }, {
+        headers: authStore.authHeaders
+      })
+
+      if (selectedClinic.value && selectedClinic.value._id === id) {
+        selectedClinic.value.planOverrides = response.data.planOverrides
+      }
+
+      toast.success('Overrides atualizados com sucesso!')
+      return true
+    } catch (err) {
+      console.error(`Erro ao atualizar overrides:`, err)
+      toast.error('Erro ao atualizar overrides.')
       return false
     }
   }
@@ -171,6 +189,7 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     fetchClinicById,
     clearSelectedClinic,
     updateSubscriptionStatus,
-    updateClinicPlan
+    updateClinicPlan,
+    updateClinicOverrides
   }
 })

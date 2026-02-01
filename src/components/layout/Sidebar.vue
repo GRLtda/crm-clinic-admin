@@ -116,6 +116,7 @@ const sidebarSections = computed(() => {
       { icon: UserPlus, text: 'Convites', to: '/invitations' },
       { icon: Building, text: 'Clínicas', to: '/clinics' },
       { icon: CreditCard, text: 'Assinaturas', to: '/subscriptions' },
+      { icon: Briefcase, text: 'Planos', to: '/plans' }, // 👈 Novo Link
     ]
   }
   

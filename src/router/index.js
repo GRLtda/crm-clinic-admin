@@ -76,6 +76,14 @@ const routes = [
         meta: {
           title: 'Conexão WhatsApp'
         }
+      },
+      {
+        path: '/plans',
+        name: 'plans-manager',
+        component: () => import('../views/PlansManagerView.vue'),
+        meta: {
+          title: 'Gerenciar Planos'
+        }
       }
     ]
   }
