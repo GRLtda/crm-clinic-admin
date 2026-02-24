@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../stores/auth.js' // (Ajuste o caminho se necessário)
+import { useAuthStore } from '../stores/auth.js'
 import LoginView from '../views/LoginView.vue'
-import AdminLayout from '../layouts/AdminLayout.vue' // Importar o Layout
+import AdminLayout from '../layouts/AdminLayout.vue'
 
 const routes = [
   {
@@ -9,23 +9,31 @@ const routes = [
     name: 'login',
     component: LoginView,
     meta: {
-      title: 'Login - Admin' // (OK para a página de login)
+      title: 'Login - Admin'
+    }
+  },
+  {
+    path: '/change-password',
+    name: 'change-password',
+    component: () => import('../views/ChangePasswordView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Alterar Senha'
     }
   },
   {
     path: '/',
-    component: AdminLayout, // Usar o Layout como componente PAI
+    component: AdminLayout,
     meta: {
       requiresAuth: true
     },
     children: [
-      // Rota Dashboard (Raiz)
       {
         path: '',
         name: 'dashboard',
         component: () => import('../views/DashboardView.vue'),
         meta: {
-          title: 'Dashboard' // 👈 MUDANÇA AQUI
+          title: 'Dashboard'
         }
       },
       {
@@ -36,13 +44,20 @@ const routes = [
           title: 'Convites'
         }
       },
-      // Rota de Usuários
+      {
+        path: '/team',
+        name: 'admin-team',
+        component: () => import('../views/AdminManagementView.vue'),
+        meta: {
+          title: 'Equipe Admin'
+        }
+      },
       {
         path: '/users',
         name: 'users-list',
         component: () => import('../views/UsersListView.vue'),
         meta: {
-          title: 'Usuários' // 👈 MUDANÇA AQUI
+          title: 'Usuários'
         }
       },
       {
@@ -102,14 +117,29 @@ router.beforeEach((to, from, next) => {
 
   const requiresAuth = to.meta.requiresAuth
   const isAuthenticated = authStore.isAuthenticated
+  const mustChange = authStore.mustChangePassword
 
+  // 1. Se não estiver autenticado e a rota requer auth -> Login
   if (requiresAuth && !isAuthenticated) {
-    next({ name: 'login' })
-  } else if (!requiresAuth && isAuthenticated && to.name === 'login') {
-    next({ name: 'dashboard' })
-  } else {
-    next()
+    return next({ name: 'login' })
   }
+
+  // 2. Se estiver autenticado e for para o Login -> Dashboard
+  if (!requiresAuth && isAuthenticated && to.name === 'login') {
+    return next({ name: 'dashboard' })
+  }
+
+  // 3. Se precisar alterar senha e não estiver na rota de alteração -> Change Password
+  if (isAuthenticated && mustChange && to.name !== 'change-password') {
+    return next({ name: 'change-password' })
+  }
+
+  // 4. Se já alterou senha e tentar entrar na rota de alteração -> Dashboard
+  if (isAuthenticated && !mustChange && to.name === 'change-password') {
+    return next({ name: 'dashboard' })
+  }
+
+  next()
 })
 
 export default router

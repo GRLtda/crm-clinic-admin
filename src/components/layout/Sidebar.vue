@@ -13,7 +13,8 @@ import {
   ChevronDown,
   Briefcase,
   MoreHorizontal,
-  CreditCard
+  CreditCard,
+  Shield
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -116,7 +117,7 @@ const sidebarSections = computed(() => {
       { icon: UserPlus, text: 'Convites', to: '/invitations' },
       { icon: Building, text: 'Clínicas', to: '/clinics' },
       { icon: CreditCard, text: 'Assinaturas', to: '/subscriptions' },
-      { icon: Briefcase, text: 'Planos', to: '/plans' }, // 👈 Novo Link
+      ...(authStore.user?.role === 'super admin' ? [{ icon: Shield, text: 'Equipe Admin', to: '/team' }] : []),
     ]
   }
   
