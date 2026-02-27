@@ -99,6 +99,14 @@ const routes = [
         meta: {
           title: 'Gerenciar Planos'
         }
+      },
+      {
+        path: '/surveys',
+        name: 'surveys-list',
+        component: () => import('../views/SurveysView.vue'),
+        meta: {
+          title: 'Avaliações'
+        }
       }
     ]
   }
