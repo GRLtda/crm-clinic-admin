@@ -107,6 +107,30 @@ const routes = [
         meta: {
           title: 'Avaliações'
         }
+      },
+      {
+        path: '/help-center',
+        name: 'help-center',
+        component: () => import('../views/HelpCenter/HelpCenterView.vue'),
+        meta: {
+          title: 'Central de Ajuda'
+        }
+      },
+      {
+        path: '/help-center/new',
+        name: 'help-center-new',
+        component: () => import('../views/HelpCenter/HelpArticleEditor.vue'),
+        meta: {
+          title: 'Novo Artigo'
+        }
+      },
+      {
+        path: '/help-center/:id/edit',
+        name: 'help-center-edit',
+        component: () => import('../views/HelpCenter/HelpArticleEditor.vue'),
+        meta: {
+          title: 'Editar Artigo'
+        }
       }
     ]
   }
