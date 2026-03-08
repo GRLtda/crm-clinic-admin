@@ -107,6 +107,14 @@ const routes = [
         meta: {
           title: 'Avaliações'
         }
+      },
+      {
+        path: '/notifications',
+        name: 'admin-notifications',
+        component: () => import('../views/AdminNotificationsView.vue'),
+        meta: {
+          title: 'Disparar Notificações'
+        }
       }
     ]
   }

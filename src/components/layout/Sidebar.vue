@@ -12,10 +12,10 @@ import {
   MessageSquare,
   ChevronDown,
   Briefcase,
-  MoreHorizontal,
   CreditCard,
   Shield,
-  Star
+  Star,
+  Bell
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -126,6 +126,7 @@ const sidebarSections = computed(() => {
   const comunicacaoSection = {
     title: 'Comunicação',
     links: [
+      { icon: Bell, text: 'Notificações', to: '/notifications' },
       { icon: MessageSquare, text: 'WhatsApp', to: '/whatsapp' },
       { icon: Star, text: 'Avaliações', to: '/surveys' }
     ]
