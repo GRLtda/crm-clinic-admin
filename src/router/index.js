@@ -9,8 +9,8 @@ const routes = [
     name: 'login',
     component: LoginView,
     meta: {
-      title: 'Login - Admin'
-    }
+      title: 'Login - Admin',
+    },
   },
   {
     path: '/change-password',
@@ -18,14 +18,14 @@ const routes = [
     component: () => import('../views/ChangePasswordView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Alterar Senha'
-    }
+      title: 'Alterar Senha',
+    },
   },
   {
     path: '/',
     component: AdminLayout,
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
     },
     children: [
       {
@@ -33,100 +33,124 @@ const routes = [
         name: 'dashboard',
         component: () => import('../views/DashboardView.vue'),
         meta: {
-          title: 'Dashboard'
-        }
+          title: 'Dashboard',
+        },
       },
       {
         path: '/invitations',
         name: 'invitations-list',
         component: () => import('../views/InvitationsView.vue'),
         meta: {
-          title: 'Convites'
-        }
+          title: 'Convites',
+        },
       },
       {
         path: '/team',
         name: 'admin-team',
         component: () => import('../views/AdminManagementView.vue'),
         meta: {
-          title: 'Equipe Admin'
-        }
+          title: 'Equipe Admin',
+        },
       },
       {
         path: '/users',
         name: 'users-list',
         component: () => import('../views/UsersListView.vue'),
         meta: {
-          title: 'Usuários'
-        }
+          title: 'Usuários',
+        },
       },
       {
         path: '/clinics',
         name: 'clinics-list',
         component: () => import('../views/ClinicsListView.vue'),
         meta: {
-          title: 'Clínicas'
-        }
+          title: 'Clínicas',
+        },
       },
       {
         path: '/clinics/:id',
         name: 'clinic-detail',
         component: () => import('../views/ClinicDetailView.vue'),
         meta: {
-          title: 'Detalhes da Clínica'
-        }
+          title: 'Detalhes da Clínica',
+        },
       },
       {
         path: '/subscriptions',
         name: 'subscriptions-list',
         component: () => import('../views/SubscriptionsView.vue'),
         meta: {
-          title: 'Assinaturas'
-        }
+          title: 'Assinaturas',
+        },
       },
       {
         path: '/whatsapp',
         name: 'whatsapp-connection',
         component: () => import('../views/WhatsappView.vue'),
         meta: {
-          title: 'Conexão WhatsApp'
-        }
+          title: 'Conexão WhatsApp',
+        },
       },
       {
         path: '/plans',
         name: 'plans-manager',
         component: () => import('../views/PlansManagerView.vue'),
         meta: {
-          title: 'Gerenciar Planos'
-        }
+          title: 'Gerenciar Planos',
+        },
       },
       {
         path: '/surveys',
         name: 'surveys-list',
         component: () => import('../views/SurveysView.vue'),
         meta: {
-          title: 'Avaliações'
-        }
+          title: 'Avaliações',
+        },
       },
       {
         path: '/notifications',
         name: 'admin-notifications',
         component: () => import('../views/AdminNotificationsView.vue'),
         meta: {
-          title: 'Disparar Notificações'
-        }
-      }
-    ]
-  }
+          title: 'Disparar Notificações',
+        },
+      },
+      {
+        path: '/knowledge-base',
+        name: 'knowledge-base',
+        component: () => import('../views/KnowledgeBaseView.vue'),
+        meta: {
+          title: 'Base de Conhecimento',
+        },
+      },
+      {
+        path: '/knowledge-base/categories',
+        name: 'knowledge-base-categories',
+        component: () => import('../views/KnowledgeBaseCategoriesView.vue'),
+        meta: {
+          title: 'Categorias da Base de Conhecimento',
+        },
+      },
+      {
+        path: '/knowledge-base/pages',
+        name: 'knowledge-base-pages',
+        component: () => import('../views/KnowledgeBasePagesView.vue'),
+        meta: {
+          title: 'Páginas da Base de Conhecimento',
+        },
+      },
+    ],
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 })
 
 /**
- * 🛡️ Guarda de Navegação (Navigation Guard)
+ * Guard de navegação
  */
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
@@ -135,27 +159,23 @@ router.beforeEach((to, from, next) => {
   const isAuthenticated = authStore.isAuthenticated
   const mustChange = authStore.mustChangePassword
 
-  // 1. Se não estiver autenticado e a rota requer auth -> Login
   if (requiresAuth && !isAuthenticated) {
     return next({ name: 'login' })
   }
 
-  // 2. Se estiver autenticado e for para o Login -> Dashboard
   if (!requiresAuth && isAuthenticated && to.name === 'login') {
     return next({ name: 'dashboard' })
   }
 
-  // 3. Se precisar alterar senha e não estiver na rota de alteração -> Change Password
   if (isAuthenticated && mustChange && to.name !== 'change-password') {
     return next({ name: 'change-password' })
   }
 
-  // 4. Se já alterou senha e tentar entrar na rota de alteração -> Dashboard
   if (isAuthenticated && !mustChange && to.name === 'change-password') {
     return next({ name: 'dashboard' })
   }
 
-  next()
+  return next()
 })
 
 export default router

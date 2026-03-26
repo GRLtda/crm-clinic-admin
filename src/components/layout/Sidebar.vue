@@ -11,11 +11,13 @@ import {
   Building,
   MessageSquare,
   ChevronDown,
-  Briefcase,
   CreditCard,
   Shield,
   Star,
-  Bell
+  Bell,
+  BookOpenText,
+  FileText,
+  FolderTree
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -118,6 +120,16 @@ const sidebarSections = computed(() => {
       { icon: UserPlus, text: 'Convites', to: '/invitations' },
       { icon: Building, text: 'Clínicas', to: '/clinics' },
       { icon: CreditCard, text: 'Assinaturas', to: '/subscriptions' },
+      {
+        icon: BookOpenText,
+        text: 'Central de Ajuda',
+        key: 'knowledge-base',
+        children: [
+          { icon: BookOpenText, text: 'Base de Conhecimento', to: '/knowledge-base' },
+          { icon: FolderTree, text: 'Categorias', to: '/knowledge-base/categories' },
+          { icon: FileText, text: 'Páginas', to: '/knowledge-base/pages' },
+        ],
+      },
       ...(authStore.user?.role === 'super admin' ? [{ icon: Shield, text: 'Equipe Admin', to: '/team' }] : []),
     ]
   }
@@ -179,7 +191,10 @@ const sidebarSections = computed(() => {
             <div v-if="link.children" class="nav-item-wrapper">
               <div
                 class="nav-link parent-link"
-                :class="{ 'active': isParentActive(link.children), 'expanded': isExpanded(link.key) }"
+                :class="{
+                  'active': isParentActive(link.children),
+                  'expanded': isExpanded(link.key) || isParentActive(link.children),
+                }"
                 @click="toggleExpand(link.key)"
                 :title="isCollapsed ? link.text : ''"
               >
@@ -189,18 +204,22 @@ const sidebarSections = computed(() => {
                   v-show="!isCollapsed"
                   :size="16"
                   class="chevron-icon"
-                  :class="{ 'rotate': isExpanded(link.key) }"
+                  :class="{ 'rotate': isExpanded(link.key) || isParentActive(link.children) }"
                 />
               </div>
 
               <!-- Submenu -->
               <div
                 class="submenu-wrapper"
-                :class="{ 'is-open': isExpanded(link.key) && !isCollapsed }"
+                :class="{ 'is-open': (isExpanded(link.key) || isParentActive(link.children)) && !isCollapsed }"
               >
                 <ul class="submenu">
                   <li v-for="child in link.children" :key="child.text">
-                    <RouterLink :to="child.to" class="submenu-link" active-class="active-child">
+                    <RouterLink
+                      :to="child.to"
+                      class="submenu-link"
+                      :class="{ 'active-child': route.path === child.to }"
+                    >
                       <component :is="child.icon" :size="18" stroke-width="2" class="submenu-icon" />
                       <span class="submenu-text">{{ child.text }}</span>
                     </RouterLink>

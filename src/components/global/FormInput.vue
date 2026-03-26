@@ -109,7 +109,6 @@ function handleBlur(event) {
 /* Estilos permanecem os mesmos */
 .form-group {
   text-align: left;
-  margin-bottom: 1.25rem;
 }
 .form-label {
   display: block;
