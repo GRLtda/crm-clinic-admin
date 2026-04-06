@@ -13,7 +13,9 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
   const loading = ref(true) // Carregamento inicial da página
   const status = ref('disconnected') // 'connected', 'qrcode', 'creating_qr', 'disconnected'
   const qrCodeData = ref(null) // O 'data:image/png;base64,...'
-  const sending = ref(false) // Carregamento do form de envio
+  const sending = ref(false) // Carregamento do form de envio unitário
+  const broadcasting = ref(false) // Carregamento do broadcast em massa
+  const broadcastResult = ref(null) // { total, success, failed, errors[] }
 
   const pollingInterval = ref(null) // ID do nosso setInterval
 
@@ -31,7 +33,6 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
     if (pollingInterval.value) {
       clearInterval(pollingInterval.value)
       pollingInterval.value = null
-      // console.log('WA Polling Parado');
     }
   }
 
@@ -39,34 +40,28 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
    * 🔄 Verifica o status (GET /qrcode) e age de acordo
    */
   async function checkConnection() {
-    // console.log('Verificando status do WA...');
     try {
       const response = await axios.get(`${API_BASE_URL}/whatsapp/qrcode`, {
         headers: authStore.authHeaders
       })
 
       const data = response.data
-      // Normaliza o status para lowercase (backend pode enviar 'CONNECTED' ou 'connected')
       const normalizedStatus = data.status?.toLowerCase() || 'disconnected'
       status.value = normalizedStatus
 
       if (normalizedStatus === 'connected') {
         qrCodeData.value = null
-        stopPolling() // Se conectou, para de verificar
+        stopPolling()
       }
       else if (normalizedStatus === 'qrcode') {
         qrCodeData.value = data.qrCode
-        // Se estamos mostrando um QR Code, iniciamos o polling
-        // para saber quando ele foi lido (virar 'connected')
         startPollingStatus()
       }
       else if (normalizedStatus === 'creating_qr') {
         qrCodeData.value = null
-        // Backend está gerando, tenta de novo em 5s
         setTimeout(() => checkConnection(), 5000)
       }
       else {
-        // Status inesperado ou 'disconnected'
         qrCodeData.value = null
         stopPolling()
       }
@@ -82,11 +77,9 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
 
   /**
    * polling (GET /status)
-   * Usado APENAS quando um QR code está sendo exibido,
-   * para detectar a conexão em tempo real.
+   * Usado APENAS quando um QR code está sendo exibido.
    */
   async function pollStatusOnly() {
-    // console.log('Poll /status...');
     try {
       const response = await axios.get(`${API_BASE_URL}/whatsapp/status`, {
         headers: authStore.authHeaders
@@ -106,16 +99,15 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
    * 🏁 Inicia o polling de status (a cada 5s)
    */
   function startPollingStatus() {
-    if (pollingInterval.value) return // Já está rodando
+    if (pollingInterval.value) return
 
-    // console.log('WA Polling Iniciado');
     pollingInterval.value = setInterval(() => {
       pollStatusOnly()
-    }, 5000) // Verifica a cada 5 segundos
+    }, 5000)
   }
 
   /**
-   * 📤 Envia uma mensagem de teste
+   * 📤 Envia uma mensagem de teste para um número específico
    */
   async function sendMessage(to, message) {
     if (!to || !message) {
@@ -143,10 +135,42 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
   }
 
   /**
+   * 📢 Envia mensagem em massa para todos os donos de clínicas ativas/past_due
+   */
+  async function broadcastMessage(message) {
+    if (!message || !message.trim()) {
+      toast.error('Digite uma mensagem antes de disparar.')
+      return false
+    }
+
+    broadcasting.value = true
+    broadcastResult.value = null
+
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/whatsapp/broadcast`,
+        { message },
+        { headers: authStore.authHeaders }
+      )
+      broadcastResult.value = response.data
+      toast.success(`Broadcast concluído! ✅ ${response.data.success} enviados / ❌ ${response.data.failed} falharam.`)
+      return true
+
+    } catch (err) {
+      console.error('[Broadcast] Erro ao disparar mensagens em massa:', err)
+      const errorMsg = err.response?.data?.message || 'Erro ao realizar o broadcast.'
+      toast.error(errorMsg)
+      return false
+    } finally {
+      broadcasting.value = false
+    }
+  }
+
+  /**
    * 🚪 Desconecta a sessão
    */
   async function logout() {
-    stopPolling() // Para tudo
+    stopPolling()
     loading.value = true
     try {
       await axios.post(`${API_BASE_URL}/whatsapp/logout`, {}, {
@@ -154,7 +178,6 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
       })
       toast.info('WhatsApp desconectado.')
       status.value = 'disconnected'
-      // Busca um novo QR Code
       await checkConnection()
 
     } catch (err) {
@@ -173,10 +196,13 @@ export const useWhatsappStore = defineStore('whatsapp-admin', () => {
     status,
     qrCodeData,
     sending,
+    broadcasting,
+    broadcastResult,
 
     checkConnection,
     stopPolling,
     sendMessage,
+    broadcastMessage,
     logout
   }
 })
