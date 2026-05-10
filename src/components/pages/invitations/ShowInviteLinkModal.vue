@@ -58,7 +58,7 @@
     // está na mesma origem (ex: crm.com) e a rota é /register
     const clientUrl = 'https://agendadoutor.com'
     
-    return `${clientUrl}/register?token=${props.invitation.token}`
+    return `${clientUrl}/r/${props.invitation.token}`
   })
   
   // Helper simples para data relativa
