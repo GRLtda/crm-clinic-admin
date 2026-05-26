@@ -85,6 +85,14 @@ const routes = [
         }
       },
       {
+        path: '/campaigns',
+        name: 'campaigns-list',
+        component: () => import('../views/CampaignsView.vue'),
+        meta: {
+          title: 'Campanhas'
+        }
+      },
+      {
         path: '/whatsapp',
         name: 'whatsapp-connection',
         component: () => import('../views/WhatsappView.vue'),

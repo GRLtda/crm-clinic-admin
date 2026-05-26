@@ -15,7 +15,8 @@ import {
   CreditCard,
   Shield,
   Star,
-  Bell
+  Bell,
+  Gift
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -118,6 +119,7 @@ const sidebarSections = computed(() => {
       { icon: UserPlus, text: 'Convites', to: '/invitations' },
       { icon: Building, text: 'Clínicas', to: '/clinics' },
       { icon: CreditCard, text: 'Assinaturas', to: '/subscriptions' },
+      { icon: Gift, text: 'Campanhas', to: '/campaigns' },
       ...(authStore.user?.role === 'super admin' ? [{ icon: Shield, text: 'Equipe Admin', to: '/team' }] : []),
     ]
   }
