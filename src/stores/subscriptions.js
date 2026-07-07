@@ -225,6 +225,29 @@ export const useSubscriptionsStore = defineStore('subscriptions-admin', () => {
         }
     }
 
+    async function markInvoicePaidOutOfBand(id, invoiceId, payload = {}) {
+        actionLoading.value = true
+
+        try {
+            const response = await axios.post(`${API_BASE_URL}/subscriptions/${id}/invoices/${invoiceId}/pay-out-of-band`,
+                payload,
+                { headers: authStore.authHeaders }
+            )
+
+            toast.success(response.data.message || 'Fatura marcada como paga!')
+            await fetchSubscriptions(pagination.value.page)
+            await fetchDetails(id)
+
+            return true
+        } catch (err) {
+            console.error('Erro ao marcar fatura como paga fora da Stripe:', err)
+            toast.error(err.response?.data?.message || 'Erro ao marcar fatura como paga.')
+            return false
+        } finally {
+            actionLoading.value = false
+        }
+    }
+
     // ---------------------------------
     // Exportar 📤
     // ---------------------------------
@@ -246,6 +269,7 @@ export const useSubscriptionsStore = defineStore('subscriptions-admin', () => {
         clearDetails,
         grantTrial,
         grantFreeMonth,
+        markInvoicePaidOutOfBand,
         cancelSubscription
     }
 })

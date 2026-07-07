@@ -325,6 +325,43 @@
                     Ver Última Fatura
                   </a>
                 </div>
+                <div v-if="store.selectedDetails.stripe.invoices?.length" class="invoices-panel">
+                  <div class="invoices-header">
+                    <span>Faturas</span>
+                    <small>Últimas {{ store.selectedDetails.stripe.invoices.length }}</small>
+                  </div>
+                  <div class="invoice-row" v-for="invoice in store.selectedDetails.stripe.invoices" :key="invoice.id">
+                    <div class="invoice-main">
+                      <span class="invoice-number">{{ invoice.number || invoice.id }}</span>
+                      <span class="invoice-meta">
+                        {{ formatDate(invoice.created) }} · {{ formatCurrency(invoice.amountDue) }}
+                      </span>
+                    </div>
+                    <span class="invoice-status" :class="getInvoiceStatusClass(invoice)">
+                      {{ getInvoiceStatusLabel(invoice) }}
+                    </span>
+                    <div class="invoice-actions">
+                      <a
+                        v-if="invoice.hostedInvoiceUrl"
+                        :href="invoice.hostedInvoiceUrl"
+                        target="_blank"
+                        class="btn-invoice-icon"
+                        title="Abrir fatura"
+                      >
+                        <FileText :size="15" />
+                      </a>
+                      <button
+                        v-if="canMarkInvoicePaid(invoice)"
+                        class="btn-pay-external"
+                        :disabled="store.actionLoading"
+                        @click="handleMarkInvoicePaidOutOfBand(invoice)"
+                      >
+                        <CreditCard :size="15" />
+                        Pago fora
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div v-else class="details-section">
@@ -415,6 +452,31 @@ function formatCurrency(amount) {
   }).format(amount / 100)
 }
 
+function getInvoiceStatusLabel(invoice) {
+  if (invoice.paidOutOfBand) return 'Pago fora'
+
+  const labels = {
+    paid: 'Paga',
+    open: 'Aberta',
+    draft: 'Rascunho',
+    void: 'Cancelada',
+    uncollectible: 'Incobrável'
+  }
+
+  return labels[invoice.status] || invoice.status || '-'
+}
+
+function getInvoiceStatusClass(invoice) {
+  if (invoice.paidOutOfBand || invoice.status === 'paid') return 'is-paid'
+  if (invoice.status === 'open') return 'is-open'
+  if (invoice.status === 'uncollectible') return 'is-uncollectible'
+  return 'is-muted'
+}
+
+function canMarkInvoicePaid(invoice) {
+  return ['open', 'uncollectible'].includes(invoice.status)
+}
+
 // Actions
 async function setFilter(status) {
   await store.setStatusFilter(status)
@@ -451,6 +513,24 @@ async function handleGrantTrial(id, name) {
 async function handleGrantFreeMonth(id, name) {
   if (!confirm(`Aplicar crédito de 1 mês grátis para "${name}"? A próxima fatura será R$0,00.`)) return
   await store.grantFreeMonth(id)
+}
+
+async function handleMarkInvoicePaidOutOfBand(invoice) {
+  const clinic = store.selectedDetails?.clinic
+  if (!clinic?._id) return
+
+  const method = window.prompt('Forma de pagamento externo (Pix, cartão, débito, dinheiro):', 'Pix')
+  if (method === null) return
+
+  const note = window.prompt('Observação opcional:', '') || ''
+  const invoiceLabel = invoice.number || invoice.id
+
+  if (!confirm(`Marcar a fatura ${invoiceLabel} de "${clinic.name}" como paga fora da Stripe? Nenhuma cobrança será feita no cartão.`)) return
+
+  await store.markInvoicePaidOutOfBand(clinic._id, invoice.id, {
+    method: method.trim() || 'externo',
+    note: note.trim()
+  })
 }
 
 async function handleSetLifetime(id, name) {
@@ -991,6 +1071,124 @@ onMounted(() => {
 
 .btn-invoice:hover {
   background: #f3f4f6;
+}
+
+.invoices-panel {
+  margin-top: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.invoices-header,
+.invoice-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.invoices-header {
+  padding: 0.625rem 0.75rem;
+  background: #f9fafb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.invoices-header small {
+  grid-column: 3;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.invoice-row {
+  padding: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.invoice-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.invoice-number {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-meta {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.invoice-status {
+  font-size: 0.71875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.invoice-status.is-paid { background: #dcfce7; color: #166534; }
+.invoice-status.is-open { background: #fef3c7; color: #92400e; }
+.invoice-status.is-uncollectible { background: #fee2e2; color: #991b1b; }
+.invoice-status.is-muted { background: #f3f4f6; color: #374151; }
+
+.invoice-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+
+.btn-invoice-icon,
+.btn-pay-external {
+  min-height: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-invoice-icon {
+  width: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-pay-external {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0f766e;
+  border-color: #99f6e4;
+}
+
+.btn-invoice-icon:hover,
+.btn-pay-external:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.btn-pay-external:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .modal-footer {
