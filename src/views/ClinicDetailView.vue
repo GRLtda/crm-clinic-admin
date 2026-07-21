@@ -40,6 +40,32 @@
         </div>
         
         <div class="header-actions">
+          <div class="subscription-status-control">
+            <label for="subscription-status">Status da assinatura</label>
+            <div class="subscription-status-form">
+              <select
+                id="subscription-status"
+                v-model="selectedSubscriptionStatus"
+                class="form-select status-select"
+                :disabled="loadingAction"
+              >
+                <option
+                  v-for="option in subscriptionStatusOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+              <button
+                @click="handleUpdateSubscriptionStatus"
+                class="btn-save-status"
+                :disabled="loadingAction || !hasSubscriptionStatusChange"
+              >
+                {{ loadingAction ? 'Salvando...' : 'Salvar' }}
+              </button>
+            </div>
+          </div>
           <button 
             v-if="clinic.subscriptionStatus !== 'lifetime'"
             @click="handleSetLifetime" 
@@ -249,7 +275,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, computed, ref } from 'vue'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useClinicsStore } from '../stores/clinics.js'
 import SideDrawer from '../components/global/SideDrawer.vue'
@@ -260,6 +286,7 @@ const route = useRoute()
 
 const clinic = computed(() => store.selectedClinic)
 const loadingAction = ref(false)
+const selectedSubscriptionStatus = ref('')
 
 // Estado do Modal de Edição de Plano
 const showPlanModal = ref(false)
@@ -287,6 +314,17 @@ const statusLabels = {
   lifetime: 'Vitalício'
 }
 
+const subscriptionStatusOptions = [
+  { value: 'active', label: 'Ativo / Pago' },
+  { value: 'past_due', label: 'Atrasado' },
+  { value: 'canceled', label: 'Cancelado' },
+  { value: 'incomplete', label: 'Incompleto' },
+  { value: 'incomplete_expired', label: 'Expirado' },
+  { value: 'trialing', label: 'Em Teste' },
+  { value: 'unpaid', label: 'Não Pago' },
+  { value: 'lifetime', label: 'Vitalício' }
+]
+
 const statusClasses = {
   active: 'status-green',
   past_due: 'status-orange',
@@ -296,6 +334,29 @@ const statusClasses = {
   trialing: 'status-blue',
   unpaid: 'status-red',
   lifetime: 'status-purple'
+}
+
+const hasSubscriptionStatusChange = computed(() => {
+  return Boolean(
+    clinic.value
+    && selectedSubscriptionStatus.value
+    && selectedSubscriptionStatus.value !== clinic.value.subscriptionStatus
+  )
+})
+
+watch(() => clinic.value?.subscriptionStatus, (newStatus) => {
+  selectedSubscriptionStatus.value = newStatus || 'active'
+}, { immediate: true })
+
+async function handleUpdateSubscriptionStatus() {
+  if (!hasSubscriptionStatusChange.value) return
+
+  const statusLabel = statusLabels[selectedSubscriptionStatus.value] || selectedSubscriptionStatus.value
+  if (!confirm(`Tem certeza que deseja alterar o status da assinatura para "${statusLabel}"?`)) return
+
+  loadingAction.value = true
+  await store.updateSubscriptionStatus(clinic.value._id, selectedSubscriptionStatus.value)
+  loadingAction.value = false
 }
 
 async function handleSetLifetime() {
@@ -498,6 +559,52 @@ onUnmounted(() => {
 .header-actions {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.subscription-status-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 260px;
+}
+
+.subscription-status-control label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.subscription-status-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-select {
+  min-width: 150px;
+}
+
+.btn-save-status {
+  padding: 0.625rem 0.875rem;
+  background-color: #2563eb;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+.btn-save-status:hover {
+  background-color: #1d4ed8;
+}
+.btn-save-status:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .btn-lifetime {
