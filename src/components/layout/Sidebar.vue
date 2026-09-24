@@ -15,7 +15,9 @@ import {
   CreditCard,
   Shield,
   Star,
-  Bell
+  Bell,
+  ScrollText,
+  BadgeDollarSign
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -132,7 +134,15 @@ const sidebarSections = computed(() => {
     ]
   }
 
-  return [principalSection, gestaoSection, comunicacaoSection]
+  const auditoriaSection = {
+    title: 'Auditoria',
+    links: [
+      ...(['super admin', 'admin'].includes(authStore.user?.role) ? [{ icon: ScrollText, text: 'Auditoria do sistema', to: '/audit/system' }] : []),
+      ...(authStore.user?.role === 'super admin' ? [{ icon: BadgeDollarSign, text: 'Auditoria financeira', to: '/audit/financial' }] : [])
+    ]
+  }
+
+  return [principalSection, gestaoSection, comunicacaoSection, auditoriaSection].filter(section => section.links.length)
 })
 
 </script>
