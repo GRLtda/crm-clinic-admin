@@ -57,5 +57,6 @@ function createAuditStore(id, endpoint) {
   })
 }
 
-export const useSystemAuditStore = createAuditStore('system-audit', '/admin/audit/system')
-export const useFinancialAuditStore = createAuditStore('financial-audit', '/admin/audit/financial')
+// O cliente administrativo já usa uma baseURL terminada em `/admin`.
+export const useSystemAuditStore = createAuditStore('system-audit', '/audit/system')
+export const useFinancialAuditStore = createAuditStore('financial-audit', '/audit/financial')
