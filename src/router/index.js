@@ -115,6 +115,18 @@ const routes = [
         meta: {
           title: 'Disparar Notificações'
         }
+      },
+      {
+        path: '/audit/system',
+        name: 'system-audit',
+        component: () => import('../views/SystemAuditView.vue'),
+        meta: { title: 'Auditoria do Sistema', roles: ['super admin', 'admin'] }
+      },
+      {
+        path: '/audit/financial',
+        name: 'financial-audit',
+        component: () => import('../views/FinancialAuditView.vue'),
+        meta: { title: 'Auditoria Financeira', roles: ['super admin'] }
       }
     ]
   }
@@ -134,6 +146,7 @@ router.beforeEach((to, from, next) => {
   const requiresAuth = to.meta.requiresAuth
   const isAuthenticated = authStore.isAuthenticated
   const mustChange = authStore.mustChangePassword
+  const allowedRoles = to.meta.roles
 
   // 1. Se não estiver autenticado e a rota requer auth -> Login
   if (requiresAuth && !isAuthenticated) {
@@ -152,6 +165,10 @@ router.beforeEach((to, from, next) => {
 
   // 4. Se já alterou senha e tentar entrar na rota de alteração -> Dashboard
   if (isAuthenticated && !mustChange && to.name === 'change-password') {
+    return next({ name: 'dashboard' })
+  }
+
+  if (isAuthenticated && allowedRoles && !allowedRoles.includes(authStore.user?.role)) {
     return next({ name: 'dashboard' })
   }
 
