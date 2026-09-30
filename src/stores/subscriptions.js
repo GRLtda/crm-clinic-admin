@@ -41,6 +41,7 @@ export const useSubscriptionsStore = defineStore('subscriptions-admin', () => {
 
     // Ação em progresso
     const actionLoading = ref(false)
+    const installationFeeLoading = ref([])
 
     const authStore = useAuthStore()
     const toast = useToast()
@@ -248,6 +249,44 @@ export const useSubscriptionsStore = defineStore('subscriptions-admin', () => {
         }
     }
 
+    /**
+     * Retira ou restaura a taxa de instalação de uma clínica.
+     */
+    async function setInstallationFeeWaived(id, waived) {
+        if (installationFeeLoading.value.includes(id)) return false
+
+        installationFeeLoading.value.push(id)
+
+        try {
+            const response = await axios.patch(
+                `${API_BASE_URL}/subscriptions/${id}/installation-fee`,
+                { waived },
+                { headers: authStore.authHeaders }
+            )
+
+            const feeState = {
+                installationFeeCharged: response.data.installationFeeCharged,
+                installationFeeWaived: response.data.installationFeeWaived,
+                installationFeePending: response.data.installationFeePending
+            }
+            const clinic = subscriptions.value.find(item => item._id === id)
+
+            if (clinic) Object.assign(clinic, feeState)
+            if (selectedDetails.value?.clinic?._id === id) {
+                Object.assign(selectedDetails.value.clinic, feeState)
+            }
+
+            toast.success(response.data.message || 'Taxa de instalação atualizada!')
+            return true
+        } catch (err) {
+            console.error('Erro ao atualizar taxa de instalação:', err)
+            toast.error(err.response?.data?.message || 'Erro ao atualizar taxa de instalação.')
+            return false
+        } finally {
+            installationFeeLoading.value = installationFeeLoading.value.filter(clinicId => clinicId !== id)
+        }
+    }
+
     // ---------------------------------
     // Exportar 📤
     // ---------------------------------
@@ -260,6 +299,7 @@ export const useSubscriptionsStore = defineStore('subscriptions-admin', () => {
         loadingDetails,
         selectedDetails,
         actionLoading,
+        installationFeeLoading,
 
         fetchSubscriptions,
         setStatusFilter,
@@ -270,7 +310,7 @@ export const useSubscriptionsStore = defineStore('subscriptions-admin', () => {
         grantTrial,
         grantFreeMonth,
         markInvoicePaidOutOfBand,
+        setInstallationFeeWaived,
         cancelSubscription
     }
 })
-

@@ -130,6 +130,24 @@
             <span class="info-label">Último Erro</span>
             <span class="info-value">{{ formatDate(clinic.lastPaymentFailureDate) }}</span>
           </div>
+          <div class="installation-fee-control">
+            <div>
+              <span class="installation-fee-label">Retirar taxa de instalação</span>
+              <small>{{ getInstallationFeeStatus(clinic) }}</small>
+            </div>
+            <button
+              type="button"
+              class="toggle-switch"
+              :class="{ active: clinic.installationFeeWaived }"
+              role="switch"
+              :aria-checked="Boolean(clinic.installationFeeWaived)"
+              :aria-label="`Retirar taxa de instalação de ${clinic.name}`"
+              :disabled="isInstallationFeeLoading(clinic._id)"
+              @click="handleInstallationFeeToggle(clinic)"
+            >
+              <span class="toggle-knob"></span>
+            </button>
+          </div>
         </div>
 
         <div class="card-actions">
@@ -240,6 +258,24 @@
                     >
                       {{ getStatusLabel(store.selectedDetails.clinic.subscriptionStatus) }}
                     </span>
+                  </div>
+                  <div class="detail-item full-width installation-fee-detail">
+                    <div>
+                      <span class="detail-label">Retirar taxa de instalação</span>
+                      <span class="detail-value">{{ getInstallationFeeStatus(store.selectedDetails.clinic) }}</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="toggle-switch"
+                      :class="{ active: store.selectedDetails.clinic.installationFeeWaived }"
+                      role="switch"
+                      :aria-checked="Boolean(store.selectedDetails.clinic.installationFeeWaived)"
+                      aria-label="Retirar taxa de instalação"
+                      :disabled="isInstallationFeeLoading(store.selectedDetails.clinic._id)"
+                      @click="handleInstallationFeeToggle(store.selectedDetails.clinic)"
+                    >
+                      <span class="toggle-knob"></span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -477,6 +513,16 @@ function canMarkInvoicePaid(invoice) {
   return ['open', 'uncollectible'].includes(invoice.status)
 }
 
+function getInstallationFeeStatus(clinic) {
+  if (clinic.installationFeeCharged) return 'Taxa já paga'
+  if (clinic.installationFeeWaived) return 'Taxa retirada'
+  return 'Pendente para o próximo checkout'
+}
+
+function isInstallationFeeLoading(id) {
+  return store.installationFeeLoading.includes(id)
+}
+
 // Actions
 async function setFilter(status) {
   await store.setStatusFilter(status)
@@ -513,6 +559,10 @@ async function handleGrantTrial(id, name) {
 async function handleGrantFreeMonth(id, name) {
   if (!confirm(`Aplicar crédito de 1 mês grátis para "${name}"? A próxima fatura será R$0,00.`)) return
   await store.grantFreeMonth(id)
+}
+
+async function handleInstallationFeeToggle(clinic) {
+  await store.setInstallationFeeWaived(clinic._id, !clinic.installationFeeWaived)
 }
 
 async function handleMarkInvoicePaidOutOfBand(invoice) {
@@ -807,6 +857,77 @@ onMounted(() => {
   color: #dc2626;
 }
 
+.installation-fee-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.installation-fee-control > div,
+.installation-fee-detail > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.installation-fee-label {
+  color: #374151;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.installation-fee-control small {
+  color: #6b7280;
+  font-size: 0.6875rem;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 2.5rem;
+  height: 1.375rem;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.toggle-switch.active {
+  background: #059669;
+}
+
+.toggle-switch:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+}
+
+.toggle-switch:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+}
+
+.toggle-switch.active .toggle-knob {
+  transform: translateX(1.125rem);
+}
+
 .card-actions {
   display: flex;
   gap: 0.5rem;
@@ -1022,6 +1143,16 @@ onMounted(() => {
 
 .detail-item.full-width {
   grid-column: span 2;
+}
+
+.installation-fee-detail {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #f9fafb;
 }
 
 .detail-label {
