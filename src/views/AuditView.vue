@@ -27,9 +27,34 @@ const filters = reactive({
 const outcomeOptions = computed(() => isFinancial.value
   ? [['', 'Todos os resultados'], ['PENDING', 'Pendente'], ['SUCCESS', 'Sucesso'], ['FAILURE', 'Falha']]
   : [['', 'Todos os resultados'], ['SUCCESS', 'Sucesso'], ['FAILURE', 'Falha'], ['DENIED', 'Negado']])
+const actionOptions = [
+  ['', 'Todas as ações'],
+  ['ADMIN_LOGIN_SUCCESS', 'Login administrativo'], ['ADMIN_LOGIN_FAILURE', 'Falha no login administrativo'],
+  ['LOGIN_SUCCESS', 'Login de usuário'], ['LOGIN_FAILURE', 'Falha no login de usuário'],
+  ['ACCOUNT_CREATE', 'Conta criada'], ['ACCOUNT_UPDATE', 'Conta alterada'],
+  ['PASSWORD_RESET', 'Senha redefinida'], ['ADMIN_PASSWORD_CHANGE', 'Senha administrativa alterada'],
+  ['ADMIN_LOGOUT', 'Saída administrativa'], ['TERMS_ACCEPTED', 'Termos aceitos'],
+  ['PRIVACY_POLICY_ACCEPTED', 'Privacidade aceita'],
+  ['RATE_LIMIT_BLOCK', 'IP bloqueado'], ['RATE_LIMIT_UNBLOCK', 'IP desbloqueado'],
+  ['SUBSCRIPTION_CHECKOUT_STARTED', 'Assinatura iniciada'],
+  ['SUBSCRIPTION_CANCELLATION_REQUESTED', 'Cancelamento solicitado'],
+  ['EMPLOYEE_INVITE_CREATE', 'Convite de equipe'], ['EMPLOYEE_INVITE_CANCEL', 'Convite cancelado'],
+  ['EMPLOYEE_INVITE_ACCEPT', 'Convite aceito'], ['EMPLOYEE_ROLE_UPDATE', 'Cargo alterado'],
+  ['EMPLOYEE_REMOVE', 'Usuário removido'], ['USER_ACTIVATE', 'Usuário ativado'],
+  ['USER_DEACTIVATE', 'Usuário desativado'], ['ADMIN_ACCESS_CHANGE', 'Acesso administrativo alterado'],
+  ['ADMIN_DELETE', 'Acesso administrativo removido'],
+]
+const quickFilters = [
+  { label: 'Todos', action: '', outcome: '' },
+  { label: 'Login admin', action: 'ADMIN_LOGIN_SUCCESS', outcome: '' },
+  { label: 'Falhas', action: '', outcome: 'FAILURE' },
+  { label: 'IPs bloqueados', action: 'RATE_LIMIT_BLOCK', outcome: '' },
+  { label: 'Contas criadas', action: 'ACCOUNT_CREATE', outcome: '' },
+  { label: 'Assinaturas', action: 'SUBSCRIPTION_CHECKOUT_STARTED', outcome: '' },
+]
 const sourceOptions = [['', 'Todas as origens'], ['USER_REQUEST', 'Solicitação do usuário'], ['ADMIN_REQUEST', 'Solicitação administrativa'], ['STRIPE_WEBHOOK', 'Webhook Stripe'], ['SYSTEM_JOB', 'Rotina do sistema'], ['MANUAL_ADJUSTMENT', 'Ajuste manual']]
 const title = computed(() => isFinancial.value ? 'Auditoria financeira' : 'Auditoria do sistema')
-const subtitle = computed(() => isFinancial.value ? 'Acompanhe eventos de cobrança e assinatura.' : 'Acompanhe ações administrativas e alterações no sistema.')
+const subtitle = computed(() => isFinancial.value ? 'Acompanhe eventos de cobrança e assinatura.' : 'Acompanhe contas, acessos, segurança, equipe e assinaturas.')
 
 function isoBoundary(value, end = false) {
   if (!value) return undefined
@@ -48,6 +73,11 @@ async function load(page = Number(route.query.page) || 1) {
   await store.fetchAudits(params)
 }
 function applyFilters() { load(1) }
+function applyQuickFilter(preset) {
+  filters.action = preset.action
+  filters.outcome = preset.outcome
+  load(1)
+}
 function clearFilters() {
   Object.assign(filters, { search: '', startDate: '', endDate: '', clinicId: '', userId: '', action: '', eventType: '', outcome: '', source: '', limit: 20 })
   load(1)
@@ -78,7 +108,9 @@ function formatMoney(amount) {
 }
 function outcomeLabel(value) { return { SUCCESS: 'Sucesso', FAILURE: 'Falha', DENIED: 'Negado', PENDING: 'Pendente' }[value] || fallback(value) }
 function outcomeVariant(value) { return value === 'SUCCESS' ? 'success' : value === 'PENDING' ? 'neutral' : 'danger' }
-function actorName(item) { return item.actor?.name || item.actor?.email || 'Não informado' }
+function actorName(item) { return (item.actor?.type === 'SYSTEM' ? null : item.actor?.name || item.actor?.email) || item.target?.email || item.target?.name || (item.action === 'RATE_LIMIT_BLOCK' ? 'Sistema' : 'Não informado') }
+function eventTitle(item) { return item.title || item.description || fallback(item.action) }
+function eventContext(item) { return item.displayReason || (item.title && item.description !== item.title ? item.description : '') }
 function clinicName(item) { return item.clinicSnapshot?.name || item.clinicSnapshot?.email || 'Não informado' }
 function snapshotId(snapshot, legacy) { return snapshot?.id || legacy || '' }
 </script>
@@ -98,12 +130,15 @@ function snapshotId(snapshot, legacy) { return snapshot?.id || legacy || '' }
       <label><span>Clínica (ID)</span><input v-model.trim="filters.clinicId" placeholder="ObjectId da clínica" /></label>
       <label v-if="!isFinancial"><span>Usuário autor (ID)</span><input v-model.trim="filters.userId" placeholder="ObjectId do usuário" /></label>
       <label v-if="isFinancial"><span>Tipo do evento</span><input v-model.trim="filters.eventType" placeholder="Ex.: PAYMENT_APPROVED" /></label>
-      <label v-else><span>Ação</span><input v-model.trim="filters.action" placeholder="Ex.: EMPLOYEE_ROLE_UPDATE" /></label>
+      <label v-else><span>Ação</span><select v-model="filters.action"><option v-for="option in actionOptions" :key="option[0]" :value="option[0]">{{ option[1] }}</option></select></label>
       <label><span>Resultado</span><select v-model="filters.outcome"><option v-for="option in outcomeOptions" :key="option[0]" :value="option[0]">{{ option[1] }}</option></select></label>
       <label v-if="isFinancial"><span>Origem</span><select v-model="filters.source"><option v-for="option in sourceOptions" :key="option[0]" :value="option[0]">{{ option[1] }}</option></select></label>
       <label><span>Por página</span><select v-model.number="filters.limit"><option :value="10">10</option><option :value="20">20</option><option :value="50">50</option><option :value="100">100</option></select></label>
       <div class="filter-actions"><button type="button" class="clear-button" @click="clearFilters">Limpar</button><button type="submit" class="apply-button"><Filter :size="16" /> Aplicar filtros</button></div>
     </form>
+    <div v-if="!isFinancial" class="quick-filters" aria-label="Filtros rápidos">
+      <button v-for="preset in quickFilters" :key="preset.label" type="button" :class="{ active: filters.action === preset.action && filters.outcome === preset.outcome }" @click="applyQuickFilter(preset)">{{ preset.label }}</button>
+    </div>
 
     <div v-if="store.error" class="error-state" role="alert"><AlertCircle :size="22" /><div><strong>Falha ao carregar a auditoria</strong><p>{{ store.error.message }}</p><p v-if="store.error.errorId">ID do erro: <AuditId :value="store.error.errorId" /></p><p v-if="store.error.requestId">ID da requisição: <AuditId :value="store.error.requestId" /></p></div><button type="button" @click="load()">Tentar novamente</button></div>
 
@@ -113,18 +148,20 @@ function snapshotId(snapshot, legacy) { return snapshot?.id || legacy || '' }
       <article v-for="item in store.items" :key="item._id" class="audit-item">
         <button type="button" class="audit-summary" :aria-expanded="expanded.has(item._id)" @click="toggle(item._id)">
           <div class="event-mark" :class="`mark-${item.outcome?.toLowerCase()}`"><component :is="isFinancial ? WalletCards : ShieldCheck" :size="20" /></div>
-          <div class="event-main"><div class="event-title"><strong>{{ fallback(item.description) }}</strong><StatusBadge :variant="outcomeVariant(item.outcome)" :label="outcomeLabel(item.outcome)" /></div><div class="event-meta"><span>{{ isFinancial ? fallback(item.eventType) : fallback(item.action) }}</span><span>{{ clinicName(item) }}</span><span>{{ formatDate(item.createdAt) }}</span></div></div>
+          <div class="event-main"><div class="event-title"><strong>{{ isFinancial ? fallback(item.description) : eventTitle(item) }}</strong><StatusBadge :variant="outcomeVariant(item.outcome)" :label="outcomeLabel(item.outcome)" /></div><div v-if="!isFinancial && eventContext(item)" class="event-context">{{ eventContext(item) }}</div><div class="event-meta"><span class="event-person">{{ isFinancial ? clinicName(item) : actorName(item) }}</span><span>{{ isFinancial ? fallback(item.eventType) : fallback(item.displaySource) }}</span><span>{{ formatDate(item.createdAt) }}</span></div></div>
           <div v-if="isFinancial" class="amount">{{ formatMoney(item.amount) }}</div><ChevronDown class="chevron" :class="{ open: expanded.has(item._id) }" :size="19" />
         </button>
         <div v-if="expanded.has(item._id)" class="audit-details">
           <div class="detail-grid">
             <div><span>ID do evento</span><AuditId :value="item._id" /></div>
-            <div><span>Clínica</span><AuditId :value="snapshotId(item.clinicSnapshot, item.clinic)" :label="clinicName(item)" /></div>
-            <div><span>Ator</span><AuditId :value="snapshotId(item.actor, item.user)" :label="actorName(item)" /></div>
-            <div><span>Origem</span><strong>{{ fallback(item.source) }}</strong></div>
+            <div v-if="item.clinic || item.clinicSnapshot"><span>Clínica</span><AuditId :value="snapshotId(item.clinicSnapshot, item.clinic)" :label="clinicName(item)" /></div>
+            <div><span>Usuário relacionado</span><AuditId :value="snapshotId(item.actor, item.user)" :label="actorName(item)" /></div>
+            <div><span>Origem</span><strong>{{ isFinancial ? fallback(item.source) : fallback(item.displaySource) }}</strong></div>
             <template v-if="!isFinancial">
-              <div><span>Alvo</span><AuditId :value="item.target?.id" :label="item.target?.name || item.target?.email || ''" /></div><div><span>Entidade</span><strong>{{ fallback(item.entity) }}</strong><AuditId v-if="item.entityId" :value="item.entityId" /></div>
-              <div><span>Categoria</span><strong>{{ fallback(item.category) }}</strong></div><div><span>IP</span><strong>{{ fallback(item.ip) }}</strong></div><div><span>Request ID</span><AuditId :value="item.requestId" /></div><div class="wide"><span>User agent</span><strong>{{ fallback(item.userAgent) }}</strong></div>
+              <div v-if="item.target?.id && item.target.id !== item.actor?.id"><span>Alvo</span><AuditId :value="item.target.id" :label="item.target?.name || item.target?.email || ''" /></div>
+              <div v-if="item.ip"><span>Endereço IP</span><strong>{{ item.ip }}</strong></div>
+              <div v-if="item.requestId"><span>ID da requisição</span><AuditId :value="item.requestId" /></div>
+              <div v-if="item.userAgent" class="wide"><span>Navegador e dispositivo</span><strong class="technical-value">{{ item.userAgent }}</strong></div>
             </template>
             <template v-else>
               <div><span>Assinante</span><AuditId :value="item.subscriberSnapshot?.id" :label="item.subscriberSnapshot?.name || item.subscriberSnapshot?.email || ''" /></div><div><span>Correlação</span><AuditId :value="item.correlationId" /></div><div><span>Request ID</span><AuditId :value="item.requestId" /></div>
@@ -132,7 +169,7 @@ function snapshotId(snapshot, legacy) { return snapshot?.id || legacy || '' }
               <div v-for="(value, key) in item.stripe" :key="key"><span>Stripe · {{ key }}</span><AuditId :value="value" /></div>
             </template>
           </div>
-          <div v-if="!isFinancial && item.details?.summary" class="detail-section"><span>Resumo</span><p>{{ item.details.summary }}</p></div>
+          <div v-if="!isFinancial && item.details?.summary && !item.displayReason" class="detail-section"><span>Resumo</span><p>{{ item.details.summary }}</p></div>
           <div v-if="!isFinancial && item.details?.changes?.length" class="changes"><span>Alterações</span><div v-for="(change, index) in item.details.changes" :key="`${change.field}-${index}`" class="change-row"><strong>{{ change.field }}</strong><code>{{ displayValue(change.old) }}</code><span>→</span><code>{{ displayValue(change.new) }}</code></div></div>
         </div>
       </article>
@@ -144,6 +181,7 @@ function snapshotId(snapshot, legacy) { return snapshot?.id || legacy || '' }
 </template>
 
 <style scoped>
+.quick-filters { display: flex; flex-wrap: wrap; gap: .5rem; margin: -.25rem 0 1rem; }.quick-filters button { padding: .45rem .75rem; border: 1px solid #dbe2ea; border-radius: 999px; background: white; color: #334155; cursor: pointer; font: inherit; font-size: .78rem; }.quick-filters button.active { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; font-weight: 700; }
 .audit-page { width: 100%; color: #172033; }.page-heading { display: flex; align-items: center; gap: .85rem; margin-bottom: 1.25rem; }.page-heading h1 { margin: 0 0 .2rem; font-size: 1.75rem; }.page-heading p { margin: 0; color: #64748b; font-size: .9rem; }.heading-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; color: #2563eb; background: #eff6ff; }.refresh-button { margin-left: auto; display: flex; align-items: center; gap: .45rem; padding: .6rem .85rem; border: 1px solid #dbe2ea; border-radius: 8px; background: white; color: #334155; cursor: pointer; }.spinning { animation: spin 1s linear infinite; }@keyframes spin { to { transform: rotate(360deg); } }
 .filters-card { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: .85rem; padding: 1rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; background: white; box-shadow: 0 1px 2px #0f172a0a; }.filters-card label { display: flex; flex-direction: column; gap: .35rem; }.filters-card label span { color: #64748b; font-size: .72rem; font-weight: 600; text-transform: uppercase; }.filters-card input,.filters-card select { box-sizing: border-box; width: 100%; height: 40px; padding: 0 .7rem; border: 1px solid #d8e0e9; border-radius: 8px; background: white; color: #334155; font: inherit; font-size: .8rem; }.filters-card input:focus,.filters-card select:focus { outline: 2px solid #bfdbfe; border-color: #3b82f6; }.search-field { position: relative; grid-column: span 2; align-self: end; }.search-field svg { position: absolute; top: 11px; left: 11px; color: #94a3b8; }.search-field input { padding-left: 2.35rem; }.filter-actions { display: flex; align-self: end; justify-content: flex-end; gap: .5rem; }.filter-actions button,.error-state button,.empty-state button { height: 40px; padding: 0 .8rem; border-radius: 8px; cursor: pointer; font-weight: 600; }.clear-button { border: 1px solid #dbe2ea; background: white; color: #475569; }.apply-button { display: flex; align-items: center; gap: .4rem; border: 0; background: #2563eb; color: white; }
 .audit-list { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 12px; background: white; transition: opacity .2s; }.audit-list.refreshing { opacity: .6; pointer-events: none; }.audit-item + .audit-item { border-top: 1px solid #e8edf3; }.audit-summary { display: flex; align-items: center; gap: .9rem; width: 100%; padding: 1rem; border: 0; background: white; text-align: left; cursor: pointer; }.audit-summary:hover { background: #f8fafc; }.event-mark { display: grid; flex: 0 0 auto; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: #f1f5f9; color: #64748b; }.mark-success { color: #15803d; background: #f0fdf4; }.mark-failure,.mark-denied { color: #b91c1c; background: #fef2f2; }.mark-pending { color: #a16207; background: #fefce8; }.event-main { min-width: 0; flex: 1; }.event-title { display: flex; align-items: center; gap: .65rem; }.event-title strong { overflow: hidden; color: #1e293b; font-size: .9rem; text-overflow: ellipsis; white-space: nowrap; }.event-meta { display: flex; gap: .55rem; margin-top: .35rem; color: #64748b; font-size: .75rem; }.event-meta span + span::before { content: '•'; margin-right: .55rem; color: #cbd5e1; }.amount { color: #0f172a; font-weight: 700; white-space: nowrap; }.chevron { color: #94a3b8; transition: transform .2s; }.chevron.open { transform: rotate(180deg); }
@@ -151,4 +189,25 @@ function snapshotId(snapshot, legacy) { return snapshot?.id || legacy || '' }
 .error-state { display: flex; align-items: flex-start; gap: .8rem; padding: 1rem; border: 1px solid #fecaca; border-radius: 10px; background: #fff7f7; color: #991b1b; }.error-state p { margin: .25rem 0 0; font-size: .8rem; }.error-state button { margin-left: auto; border: 1px solid #fecaca; background: white; color: #991b1b; }.empty-state { padding: 4rem 1rem; border: 1px solid #e2e8f0; border-radius: 12px; background: white; color: #64748b; text-align: center; }.empty-state h2 { margin: .8rem 0 .3rem; color: #1e293b; font-size: 1.15rem; }.empty-state p { margin: 0 0 1rem; font-size: .85rem; }.empty-state button { border: 1px solid #dbe2ea; background: white; color: #334155; }.skeleton-list .audit-row { display: flex; align-items: center; gap: 1rem; padding: 1rem; }.skeleton-copy { display: flex; flex: 1; flex-direction: column; gap: .55rem; }
 @media (max-width: 1100px) { .filters-card { grid-template-columns: repeat(3, 1fr); }.detail-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 700px) { .page-heading { align-items: flex-start; flex-wrap: wrap; }.refresh-button { margin-left: 0; }.filters-card { grid-template-columns: 1fr; }.search-field { grid-column: span 1; }.filter-actions { justify-content: stretch; }.filter-actions button { flex: 1; }.audit-summary { align-items: flex-start; }.event-title,.event-meta { align-items: flex-start; flex-direction: column; }.event-meta span + span::before { display: none; }.amount { display: none; }.audit-details { padding: .25rem .7rem .8rem; }.detail-grid { grid-template-columns: 1fr; }.wide { grid-column: span 1; }.change-row { grid-template-columns: 1fr; }.change-row > span { display: none; } }
+.audit-list { border-radius: 14px; box-shadow: 0 2px 12px #0f172a08; }
+.audit-item { border-left: 3px solid transparent; }
+.audit-item:has(.mark-failure),.audit-item:has(.mark-denied) { border-left-color: #ef4444; }
+.audit-item:has(.mark-success) { border-left-color: #22c55e; }
+.audit-summary { gap: 1rem; padding: 1.05rem 1.25rem; }
+.audit-summary[aria-expanded="true"] { background: #f8fafc; }
+.event-mark { width: 40px; height: 40px; border-radius: 11px; }
+.event-title strong { font-size: .94rem; font-weight: 700; letter-spacing: -.01em; }
+.event-context { margin-top: .3rem; color: #475569; font-size: .8rem; }
+.event-meta { align-items: center; flex-wrap: wrap; gap: .35rem .7rem; margin-top: .45rem; font-size: .77rem; }
+.event-meta .event-person { color: #334155; font-weight: 600; }
+.event-meta span + span::before { margin-right: .7rem; }
+.audit-details { padding: 0 1.25rem 1.1rem 5.2rem; background: #f8fafc; }
+.detail-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem 1.5rem; padding: 1.15rem 1.25rem; border-color: #e2e8f0; box-shadow: 0 1px 3px #0f172a08; }
+.detail-grid > div { gap: .4rem; }
+.detail-grid span,.detail-section > span,.changes > span { color: #64748b; font-size: .68rem; letter-spacing: .04em; }
+.detail-grid strong { color: #1e293b; font-size: .8rem; font-weight: 600; text-transform: none; }
+.detail-grid .technical-value { color: #64748b; font-size: .75rem; font-weight: 400; line-height: 1.5; }
+.detail-section,.changes { border-color: #e2e8f0; box-shadow: 0 1px 3px #0f172a08; }
+@media (max-width: 1100px) { .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .audit-summary { padding: .9rem; }.audit-details { padding: 0 .75rem .85rem; }.detail-grid { grid-template-columns: 1fr; }.event-title strong { white-space: normal; }.event-meta { align-items: flex-start; }.wide { grid-column: auto; } }
 </style>

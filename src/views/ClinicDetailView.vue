@@ -15,7 +15,7 @@
     <div v-else-if="store.selectedClinic" class="detail-content">
       <div class="detail-header">
         <div class="logo-wrapper-large">
-          <img v-if="clinic.logoUrl" :src="clinic.logoUrl" :alt="clinic.name" class="logo" />
+          <img v-if="clinic.logoUrl && !logoFailed" :src="clinic.logoUrl" :alt="clinic.name" class="logo" @error="logoFailed = true" />
           <Building2 v-else :size="48" class="logo-placeholder" />
         </div>
         <div class="info-header">
@@ -24,9 +24,6 @@
           <div class="header-tags">
             <span class="plan-tag">
               {{ clinic.plan }}
-              <button @click="openPlanModal" class="btn-edit-plan" title="Alterar Plano">
-                <Edit2 :size="12" />
-              </button>
             </span>
             <span 
               v-if="clinic.subscriptionStatus" 
@@ -39,55 +36,16 @@
           </div>
         </div>
         
-        <div class="header-actions">
-          <div class="subscription-status-control">
-            <label for="subscription-status">Status da assinatura</label>
-            <div class="subscription-status-form">
-              <select
-                id="subscription-status"
-                v-model="selectedSubscriptionStatus"
-                class="form-select status-select"
-                :disabled="loadingAction"
-              >
-                <option
-                  v-for="option in subscriptionStatusOptions"
-                  :key="option.value"
-                  :value="option.value"
-                >
-                  {{ option.label }}
-                </option>
-              </select>
-              <button
-                @click="handleUpdateSubscriptionStatus"
-                class="btn-save-status"
-                :disabled="loadingAction || !hasSubscriptionStatusChange"
-              >
-                {{ loadingAction ? 'Salvando...' : 'Salvar' }}
-              </button>
-            </div>
-          </div>
-          <button 
-            v-if="clinic.subscriptionStatus !== 'lifetime'"
-            @click="handleSetLifetime" 
-            class="btn-lifetime"
-            :disabled="loadingAction"
-          >
-            <Crown :size="16" />
-            Tornar Vitalício
-          </button>
-          <button 
-            v-else
-            @click="handleRemoveLifetime" 
-            class="btn-remove-lifetime"
-            :disabled="loadingAction"
-          >
-            <XCircle :size="16" />
-            Remover Vitalício
-          </button>
-        </div>
       </div>
 
-      <div class="detail-grid">
+      <div class="clinic-tab-layout">
+        <aside class="clinic-tab-sidebar" aria-label="Navegação da clínica">
+          <button type="button" class="clinic-tab-button" :class="{ active: activeTab === 'details' }" @click="activeTab = 'details'"><Building2 :size="18" /> Dados clínica</button>
+          <button type="button" class="clinic-tab-button" :class="{ active: activeTab === 'subscription' }" @click="activeTab = 'subscription'"><Crown :size="18" /> Assinatura</button>
+          <button type="button" class="clinic-tab-button" disabled aria-disabled="true"><ShieldCheck :size="18" /> Auditoria</button>
+        </aside>
+        <div class="clinic-tab-content">
+      <div v-if="activeTab === 'details'" class="detail-grid">
         
         <div class="grid-column">
           <div class="info-card">
@@ -195,6 +153,17 @@
         </div>
 
       </div>
+      <section v-else-if="activeTab === 'subscription'" class="subscription-panel">
+        <div class="subscription-panel-header"><div><h2>Assinatura</h2><p>Gerencie o plano, o status do pagamento e a taxa de instalação.</p></div><span class="status-tag" :class="statusClasses[clinic.subscriptionStatus] || 'status-gray'">{{ statusLabels[clinic.subscriptionStatus] || 'Sem assinatura' }}</span></div>
+        <div class="subscription-form-grid">
+          <div class="subscription-field"><label>Plano da clínica</label><p>Plano disponível para a clínica.</p><div class="subscription-input-row"><AppSelect v-model="selectedPlan" :options="planOptions" :disabled="loadingAction" class="subscription-select" /><button class="btn-save-status" :disabled="loadingAction || selectedPlan === clinic.plan" @click="handleSavePlan">Salvar plano</button></div></div>
+          <div class="subscription-field"><label>Status do pagamento</label><p>Atualiza o status administrativo da assinatura.</p><div class="subscription-input-row"><AppSelect v-model="selectedSubscriptionStatus" :options="subscriptionStatusOptions" :disabled="loadingAction" class="subscription-select" /><button class="btn-save-status" :disabled="loadingAction || !hasSubscriptionStatusChange" @click="handleUpdateSubscriptionStatus">Salvar status</button></div></div>
+          <div class="subscription-field fee-field"><div class="fee-row"><div><label>Taxa de instalação</label><p>{{ feeWaived ? 'Taxa dispensada para esta clínica.' : clinic.installationFeeCharged ? 'Taxa já paga ou satisfeita.' : 'Taxa pendente para esta clínica.' }}</p></div><button v-if="authStore.user?.role === 'super admin'" type="button" class="fee-toggle" :class="{ active: feeWaived }" role="switch" :aria-checked="feeWaived" :aria-label="feeWaived ? 'Colocar taxa de instalação novamente' : 'Retirar taxa de instalação'" :disabled="loadingAction || (clinic.installationFeeCharged && !feeWaived)" @click="handleInstallationFeeToggle"><span class="fee-toggle-knob"></span></button></div><small v-if="authStore.user?.role === 'super admin'" class="fee-hint">{{ feeWaived ? 'Desative o controle para cobrar a taxa no próximo checkout.' : clinic.installationFeeCharged ? 'A taxa paga não pode ser recolocada.' : 'Ative o controle para dispensar a taxa.' }}</small></div>
+        </div>
+        <button type="button" class="advanced-plan-button" @click="openPlanModal"><Edit2 :size="15" /> Configurações avançadas do plano</button>
+      </section>
+        </div>
+      </div>
     </div>
     
     <div v-else class="empty-state">
@@ -202,15 +171,15 @@
       <h3>Clínica não encontrada</h3>
       <p>Não foi possível carregar os dados desta clínica.</p>
     </div>
-    <!-- SideDrawer de Alteração de Plano -->
+    <!-- Configurações avançadas do plano -->
     <SideDrawer 
       v-if="showPlanModal" 
       @close="closePlanModal" 
-      size="sm"
+      size="md"
     >
       <template #header>
         <div class="drawer-header">
-          <h3>Alterar Plano</h3>
+          <div><h3>Configurações do plano</h3><p>Personalize o plano e os limites desta clínica.</p></div>
           <!-- Botão de fechar mobile que o SideDrawer espera -->
           <button @click="closePlanModal" class="mobile-close-btn">
             <X :size="20" />
@@ -220,51 +189,40 @@
 
       <div class="drawer-body-content">
         <div class="drawer-section">
-          <h4>Alterar Plano Base</h4>
-          <p class="drawer-description">Selecione o novo plano para esta clínica.</p>
-          <div class="form-group">
-            <label>Plano</label>
-            <select v-model="selectedPlan" class="form-select">
-              <template v-for="opt in planOptions" :key="opt.value">
-                <option :value="opt.value">
-                  {{ opt.label }}
-                </option>
-              </template>
-            </select>
-          </div>
+          <h4>Plano base</h4>
+          <p class="drawer-description">Selecione o plano aplicado à clínica.</p>
+          <AppSelect v-model="selectedPlan" label="Plano" :options="planOptions" :disabled="loadingAction" />
         </div>
 
-        <div class="drawer-section mt-6">
-          <h4>Overrides de Funcionalidades</h4>
-          <p class="drawer-description">Ative ou desative funcionalidades especificamente para esta clínica, ignorando o plano base.</p>
-          
+        <div class="drawer-section">
+          <h4>Funcionalidades adicionais</h4>
+          <p class="drawer-description">Ajustes específicos desta clínica além do plano base.</p>
           <div class="overrides-list">
-             <div v-for="(enabled, key) in overrides.modules" :key="key" class="override-item">
-               <label class="toggle-switch">
-                  <input type="checkbox" v-model="overrides.modules[key]">
-                  <span class="slider round"></span>
-               </label>
-               <span class="override-label">{{ key }}</span>
-             </div>
+            <label v-for="(enabled, key) in overrides.modules" :key="key" class="override-item">
+              <span class="override-copy"><strong>{{ moduleLabels[key] || key }}</strong><small>Disponível para esta clínica</small></span>
+              <input v-model="overrides.modules[key]" type="checkbox" class="override-checkbox" :disabled="loadingAction" />
+            </label>
           </div>
         </div>
 
-         <div class="drawer-section mt-6">
-          <h4>Overrides de Limites</h4>
-          <div class="form-group mb-2">
-            <label>Médicos Extra (0 = Padrão do Plano)</label>
-            <input type="number" v-model.number="overrides.limits.doctors" class="form-input">
+        <div class="drawer-section">
+          <h4>Limites adicionais</h4>
+          <p class="drawer-description">Use zero para manter o limite padrão do plano.</p>
+          <div class="form-group">
+            <label for="extra-doctors">Profissionais extras</label>
+            <input id="extra-doctors" v-model.number="overrides.limits.doctors" type="number" min="0" step="1" class="drawer-number-input" :disabled="loadingAction" />
           </div>
         </div>
       </div>
 
       <template #footer>
         <div class="drawer-footer">
-          <button @click="closePlanModal" class="btn-cancel">Cancelar</button>
+          <button type="button" @click="closePlanModal" class="btn-cancel">Cancelar</button>
           <button 
+            type="button"
             @click="handleUpdatePlan" 
             class="btn-confirm"
-            :disabled="loadingAction || selectedPlan === clinic.plan"
+            :disabled="loadingAction"
           >
             {{ loadingAction ? 'Salvando...' : 'Salvar Alterações' }}
           </button>
@@ -278,14 +236,20 @@
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { useClinicsStore } from '../stores/clinics.js'
+import { useAuthStore } from '../stores/auth.js'
 import SideDrawer from '../components/global/SideDrawer.vue'
-import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, XCircle, Edit2, X } from 'lucide-vue-next'
+import AppSelect from '../components/global/AppSelect.vue'
+import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, Edit2, X, ShieldCheck } from 'lucide-vue-next'
 
 const store = useClinicsStore()
+const authStore = useAuthStore()
 const route = useRoute()
 
 const clinic = computed(() => store.selectedClinic)
+const feeWaived = computed(() => Boolean(clinic.value?.installationFeeWaived || clinic.value?.installationFeeCanRestore))
 const loadingAction = ref(false)
+const activeTab = ref('details')
+const logoFailed = ref(false)
 const selectedSubscriptionStatus = ref('')
 
 // Estado do Modal de Edição de Plano
@@ -295,6 +259,7 @@ const overrides = ref({
   modules: { workflows: false, finance: false, whatsapp: false, ai_reports: false },
   limits: { doctors: 0 }
 })
+const moduleLabels = { workflows: 'Fluxos de trabalho', finance: 'Financeiro', whatsapp: 'WhatsApp', ai_reports: 'Relatórios com IA' }
 
 const planOptions = [
   { value: 'basic', label: 'Básico' },
@@ -347,6 +312,25 @@ const hasSubscriptionStatusChange = computed(() => {
 watch(() => clinic.value?.subscriptionStatus, (newStatus) => {
   selectedSubscriptionStatus.value = newStatus || 'active'
 }, { immediate: true })
+watch(() => clinic.value?.plan, (newPlan) => { selectedPlan.value = newPlan || 'basic' }, { immediate: true })
+watch(() => clinic.value?.logoUrl, () => { logoFailed.value = false })
+
+async function handleSavePlan() {
+  if (!clinic.value || selectedPlan.value === clinic.value.plan) return
+  if (!confirm(`Alterar o plano da clínica para ${planOptions.find(option => option.value === selectedPlan.value)?.label || selectedPlan.value}?`)) return
+  loadingAction.value = true
+  try { await store.updateClinicPlan(clinic.value._id, selectedPlan.value) }
+  finally { loadingAction.value = false }
+}
+
+async function handleInstallationFeeToggle() {
+  if (!clinic.value || (clinic.value.installationFeeCharged && !feeWaived.value)) return
+  const waived = !feeWaived.value
+  if (!confirm(waived ? 'Retirar a taxa de instalação desta clínica?' : 'Colocar a taxa de instalação novamente para o próximo checkout?')) return
+  loadingAction.value = true
+  try { await store.setInstallationFeeWaived(clinic.value._id, waived) }
+  finally { loadingAction.value = false }
+}
 
 async function handleUpdateSubscriptionStatus() {
   if (!hasSubscriptionStatusChange.value) return
@@ -418,6 +402,38 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.clinic-tab-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: start; gap: 1.25rem; }
+.clinic-tab-sidebar { position: sticky; top: 1rem; display: flex; flex-direction: column; gap: .25rem; padding: .5rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 1rem; }
+.clinic-tab-button { display: flex; align-items: center; gap: .75rem; min-height: 44px; padding: .65rem .75rem; border: 1px solid transparent; border-radius: .625rem; background: transparent; color: #475569; font: inherit; font-size: .875rem; font-weight: 600; text-align: left; cursor: pointer; }
+.clinic-tab-button:hover:not(:disabled) { background: #f8fafc; color: #0f172a; }
+.clinic-tab-button.active { background: #eef4ff; border-color: #dbeafe; color: #2563eb; }
+.clinic-tab-button:disabled { color: #94a3b8; cursor: not-allowed; }
+.subscription-select { min-width: 0; flex: 1; }
+.clinic-tab-content { min-width: 0; }
+.subscription-panel { padding: 1.5rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 1rem; }
+.subscription-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid #e5e7eb; }
+.subscription-panel-header h2 { margin: 0 0 .35rem; color: #111827; font-size: 1.25rem; }
+.subscription-panel-header p,.subscription-field p { margin: 0; color: #64748b; font-size: .85rem; }
+.subscription-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding: 1.25rem 0; }
+.subscription-field { padding: 1.1rem; border: 1px solid #e5e7eb; border-radius: .75rem; background: #fbfdff; }
+.subscription-field label { display: block; margin-bottom: .25rem; color: #1f2937; font-size: .9rem; font-weight: 700; }
+.subscription-input-row { display: flex; gap: .6rem; margin-top: 1rem; }
+.subscription-input-row select { min-width: 0; flex: 1; }
+.subscription-input-row button { white-space: nowrap; }
+.fee-field { grid-column: 1 / -1; }
+.fee-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.fee-hint { display: block; margin-top: .65rem; color: #64748b; font-size: .75rem; }
+.fee-toggle { position: relative; flex: 0 0 44px; width: 44px; height: 26px; padding: 0; border: 0; border-radius: 999px; background: #cbd5e1; cursor: pointer; transition: background .2s; }
+.fee-toggle.active { background: #2563eb; }
+.fee-toggle:disabled { opacity: .5; cursor: not-allowed; }
+.fee-toggle:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.fee-toggle-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #0f172a33; transition: transform .2s; }
+.fee-toggle.active .fee-toggle-knob { transform: translateX(18px); }
+.btn-waive-fee,.advanced-plan-button { display: inline-flex; align-items: center; gap: .45rem; margin-top: 1rem; padding: .65rem .9rem; border: 1px solid #cbd5e1; border-radius: .5rem; background: #fff; color: #334155; font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.btn-waive-fee:disabled,.subscription-input-row button:disabled { opacity: .55; cursor: not-allowed; }
+.advanced-plan-button { margin-top: 0; }
+@media (max-width: 950px) { .clinic-tab-layout { grid-template-columns: 1fr; }.clinic-tab-sidebar { position: static; flex-direction: row; flex-wrap: wrap; }.subscription-form-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .clinic-tab-sidebar { flex-direction: column; }.subscription-input-row { flex-direction: column; }.subscription-panel { padding: 1rem; } }
 /* Header da Página */
 .page-header {
   margin-bottom: 1.5rem;
@@ -825,10 +841,26 @@ onUnmounted(() => {
   font-weight: 600;
   color: #111827;
 }
+.drawer-header p { margin: .3rem 0 0; color: #64748b; font-size: .82rem; }
 
 .drawer-body-content {
-  /* O padding já vem do componente SideDrawer, mas podemos ajustar se necessário */
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
 }
+.drawer-section { padding: 1.15rem; border: 1px solid #e2e8f0; border-radius: .85rem; background: #fff; }
+.drawer-section h4 { margin: 0 0 .3rem; color: #172033; font-size: .95rem; font-weight: 700; }
+.drawer-section .drawer-description { margin-bottom: 1rem; }
+.overrides-list { display: flex; flex-direction: column; gap: .55rem; }
+.override-item { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem .9rem; border: 1px solid #e2e8f0; border-radius: .65rem; background: #f8fafc; cursor: pointer; }
+.override-copy { display: flex; flex-direction: column; gap: .2rem; }
+.override-copy strong { color: #1e293b; font-size: .85rem; font-weight: 600; }
+.override-copy small { color: #64748b; font-size: .75rem; }
+.override-checkbox { flex: 0 0 auto; width: 1.15rem; height: 1.15rem; accent-color: #2563eb; cursor: pointer; }
+.drawer-number-input { width: 100%; box-sizing: border-box; min-height: 44px; padding: .65rem .8rem; border: 1px solid #cbd5e1; border-radius: .65rem; background: #fff; color: #1e293b; font: inherit; }
+.drawer-number-input:focus { outline: 2px solid #bfdbfe; border-color: #3b82f6; }
 .drawer-description {
   margin: 0 0 1.5rem;
   font-size: 0.875rem;

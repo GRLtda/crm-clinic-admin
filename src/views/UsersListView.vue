@@ -55,7 +55,12 @@
               <span class="user-role">{{ user.role }}</span>
             </td>
             <td data-label="Clínica">
-              <span class="user-clinic">{{ user.clinic?.name || 'N/A' }}</span>
+              <div class="clinic-cell">
+                <span class="user-clinic">{{ user.clinic?.name || 'N/A' }}</span>
+                <RouterLink v-if="user.clinic?._id" :to="{ name: 'clinic-detail', params: { id: user.clinic._id } }" class="clinic-link" :aria-label="`Ir para a clínica ${user.clinic.name}`">
+                  Ir para clínica <ArrowUpRight :size="15" aria-hidden="true" />
+                </RouterLink>
+              </div>
             </td>
             <td data-label="Status">
               <StatusBadge
@@ -125,7 +130,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useUsersStore } from '../stores/users.js'
-import { UserX, Filter } from 'lucide-vue-next'
+import { UserX, Filter, ArrowUpRight } from 'lucide-vue-next'
 import AppPagination from '../components/global/AppPagination.vue'
 import SkeletonLoader from '../components/global/SkeletonLoader.vue'
 import StatusBadge from '../components/global/StatusBadge.vue'
@@ -270,8 +275,24 @@ const formatDate = (dateString) => {
 }
 .user-clinic {
   color: #6b7280;
-  font-style: italic;
 }
+.clinic-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+.clinic-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.clinic-link:hover { text-decoration: underline; }
+.clinic-link:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; border-radius: 2px; }
 .user-id {
   text-transform: none;
 }
@@ -380,6 +401,8 @@ const formatDate = (dateString) => {
   .users-table td[data-label="Nome"] .user-cell {
     justify-content: flex-end;
   }
+
+  .users-table td .clinic-cell { align-items: flex-end; text-align: right; }
 
   .skeleton-row td {
     display: flex;

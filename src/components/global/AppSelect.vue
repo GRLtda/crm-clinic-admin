@@ -8,6 +8,7 @@ const props = defineProps({
   options: { type: Array, required: true },
   required: { type: Boolean, default: false },
   error: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false },
   icon: { type: Object, default: null },
   defaultOption: { type: String, default: 'Selecione' }
 })
@@ -93,6 +94,7 @@ function selectOption(option) {
         type="button"
         class="select-button"
         :class="{ 'has-error': error }"
+        :disabled="disabled"
         @click="isOpen = !isOpen"
       >
         <div class="select-content">
@@ -168,6 +170,7 @@ function selectOption(option) {
 .select-button.has-error {
   border-color: #ef4444;
 }
+.select-button:disabled { cursor: not-allowed; background: #f8fafc; color: #94a3b8; }
 .select-button:focus,
 .select-button:focus-visible {
   outline: none;

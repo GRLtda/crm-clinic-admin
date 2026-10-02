@@ -249,9 +249,7 @@ export const useSubscriptionsStore = defineStore('subscriptions-admin', () => {
         }
     }
 
-    /**
-     * Retira ou restaura a taxa de instalação de uma clínica.
-     */
+    /** Retira a taxa de instalação pendente. */
     async function setInstallationFeeWaived(id, waived) {
         if (installationFeeLoading.value.includes(id)) return false
 
@@ -267,6 +265,7 @@ export const useSubscriptionsStore = defineStore('subscriptions-admin', () => {
             const feeState = {
                 installationFeeCharged: response.data.installationFeeCharged,
                 installationFeeWaived: response.data.installationFeeWaived,
+                installationFeeCanRestore: response.data.installationFeeCanRestore,
                 installationFeePending: response.data.installationFeePending
             }
             const clinic = subscriptions.value.find(item => item._id === id)

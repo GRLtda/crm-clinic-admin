@@ -101,7 +101,7 @@
         <div class="card-header">
           <div class="clinic-info">
             <div class="logo-wrapper">
-              <img v-if="clinic.logoUrl" :src="clinic.logoUrl" :alt="clinic.name" />
+              <img v-if="clinic.logoUrl && !brokenLogoIds.has(clinic._id)" :src="clinic.logoUrl" :alt="clinic.name" @error="brokenLogoIds.add(clinic._id)" />
               <Building2 v-else :size="24" class="logo-placeholder" />
             </div>
             <div class="clinic-details">
@@ -138,11 +138,11 @@
             <button
               type="button"
               class="toggle-switch"
-              :class="{ active: clinic.installationFeeWaived }"
+              :class="{ active: isInstallationFeeWaived(clinic) }"
               role="switch"
-              :aria-checked="Boolean(clinic.installationFeeWaived)"
+              :aria-checked="isInstallationFeeWaived(clinic)"
               :aria-label="`Retirar taxa de instalação de ${clinic.name}`"
-              :disabled="isInstallationFeeLoading(clinic._id)"
+              :disabled="isInstallationFeeLoading(clinic._id) || (clinic.installationFeeCharged && !isInstallationFeeWaived(clinic))"
               @click="handleInstallationFeeToggle(clinic)"
             >
               <span class="toggle-knob"></span>
@@ -267,11 +267,11 @@
                     <button
                       type="button"
                       class="toggle-switch"
-                      :class="{ active: store.selectedDetails.clinic.installationFeeWaived }"
+                      :class="{ active: isInstallationFeeWaived(store.selectedDetails.clinic) }"
                       role="switch"
-                      :aria-checked="Boolean(store.selectedDetails.clinic.installationFeeWaived)"
+                      :aria-checked="isInstallationFeeWaived(store.selectedDetails.clinic)"
                       aria-label="Retirar taxa de instalação"
-                      :disabled="isInstallationFeeLoading(store.selectedDetails.clinic._id)"
+                      :disabled="isInstallationFeeLoading(store.selectedDetails.clinic._id) || (store.selectedDetails.clinic.installationFeeCharged && !isInstallationFeeWaived(store.selectedDetails.clinic))"
                       @click="handleInstallationFeeToggle(store.selectedDetails.clinic)"
                     >
                       <span class="toggle-knob"></span>
@@ -440,6 +440,7 @@ const clinicsStore = useClinicsStore()
 
 const searchQuery = ref('')
 const showDetailsModal = ref(false)
+const brokenLogoIds = ref(new Set())
 const filters = computed(() => store.filters)
 
 // Status helpers
@@ -514,8 +515,8 @@ function canMarkInvoicePaid(invoice) {
 }
 
 function getInstallationFeeStatus(clinic) {
+  if (isInstallationFeeWaived(clinic)) return 'Taxa retirada'
   if (clinic.installationFeeCharged) return 'Taxa já paga'
-  if (clinic.installationFeeWaived) return 'Taxa retirada'
   return 'Pendente para o próximo checkout'
 }
 
@@ -561,8 +562,15 @@ async function handleGrantFreeMonth(id, name) {
   await store.grantFreeMonth(id)
 }
 
+function isInstallationFeeWaived(clinic) {
+  return Boolean(clinic?.installationFeeWaived || clinic?.installationFeeCanRestore)
+}
+
 async function handleInstallationFeeToggle(clinic) {
-  await store.setInstallationFeeWaived(clinic._id, !clinic.installationFeeWaived)
+  if (clinic.installationFeeCharged && !isInstallationFeeWaived(clinic)) return
+  const waived = !isInstallationFeeWaived(clinic)
+  if (!confirm(waived ? `Retirar a taxa de instalação de "${clinic.name}"?` : `Colocar a taxa de instalação novamente para "${clinic.name}"?`)) return
+  await store.setInstallationFeeWaived(clinic._id, waived)
 }
 
 async function handleMarkInvoicePaidOutOfBand(invoice) {

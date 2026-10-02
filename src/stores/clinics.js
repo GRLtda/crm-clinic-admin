@@ -172,6 +172,24 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     }
   }
 
+  async function setInstallationFeeWaived(id, waived) {
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/subscriptions/${id}/installation-fee`, { waived }, {
+        headers: authStore.authHeaders
+      })
+      if (selectedClinic.value?._id === id) {
+        selectedClinic.value.installationFeeCharged = response.data.installationFeeCharged
+        selectedClinic.value.installationFeeWaived = response.data.installationFeeWaived
+        selectedClinic.value.installationFeeCanRestore = false
+      }
+      toast.success(waived ? 'Taxa de instalação retirada.' : 'Taxa de instalação reativada.')
+      return true
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Não foi possível atualizar a taxa de instalação.')
+      return false
+    }
+  }
+
   // ---------------------------------
   // Exportar 📤
   // ---------------------------------
@@ -190,6 +208,7 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     clearSelectedClinic,
     updateSubscriptionStatus,
     updateClinicPlan,
-    updateClinicOverrides
+    updateClinicOverrides,
+    setInstallationFeeWaived
   }
 })

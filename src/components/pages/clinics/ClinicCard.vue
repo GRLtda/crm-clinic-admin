@@ -2,7 +2,7 @@
     <RouterLink :to="'/clinics/' + clinic._id" class="clinic-card">
       <div class="card-header">
         <div class="logo-wrapper">
-          <img v-if="clinic.logoUrl" :src="clinic.logoUrl" :alt="clinic.name" class="logo" />
+          <img v-if="clinic.logoUrl && !logoFailed" :src="clinic.logoUrl" :alt="clinic.name" class="logo" @error="logoFailed = true" />
           <Building2 v-else :size="24" class="logo-placeholder" />
         </div>
         <div class="info-header">
@@ -52,14 +52,17 @@
   
   <script setup>
   import { RouterLink } from 'vue-router'
+  import { ref, watch } from 'vue'
   import { Building2, CalendarDays } from 'lucide-vue-next'
   
-  defineProps({
+  const props = defineProps({
     clinic: {
       type: Object,
       required: true
     }
   })
+  const logoFailed = ref(false)
+  watch(() => props.clinic.logoUrl, () => { logoFailed.value = false })
   
   const formatDate = (dateString) => {
     const options = { day: '2-digit', month: '2-digit', year: 'numeric' }
