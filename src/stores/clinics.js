@@ -193,6 +193,18 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
   // ---------------------------------
   // Exportar 📤
   // ---------------------------------
+  async function setTrialEnd(id, trialEndsAt) {
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/subscriptions/${id}/trial-end`, { trialEndsAt }, { headers: authStore.authHeaders })
+      if (selectedClinic.value?._id === id) Object.assign(selectedClinic.value, response.data)
+      toast.success('Fim do período de teste atualizado.')
+      return true
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Não foi possível atualizar o período de teste.')
+      return false
+    }
+  }
+
   return {
     loading,
     clinics,
@@ -209,6 +221,7 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     updateSubscriptionStatus,
     updateClinicPlan,
     updateClinicOverrides,
-    setInstallationFeeWaived
+    setInstallationFeeWaived,
+    setTrialEnd
   }
 })

@@ -11,6 +11,16 @@ desabilitado durante o salvamento. O drawer avançado organiza plano,
 funcionalidades e limite adicional em seções visuais; a aba Auditoria não
 mostra texto auxiliar enquanto estiver desativada.
 
+Na aba Assinatura, o super admin vê o término atual do teste e pode escolher
+um horário exato no campo de data e hora. Os presets de 7, 14 e 30 dias somam
+tempo ao término atual quando ele ainda está no futuro; caso contrário, partem
+do horário atual. O horário é exibido no fuso local do navegador e enviado à
+API em UTC. O botão salva pelo `PATCH /admin/subscriptions/:id/trial-end`.
+O controle aceita clínicas sem assinatura Stripe em qualquer status local,
+inclusive **Não pago**, aplicando a mesma regra de teste local do convite.
+Assinaturas Stripe ativas ou vitalícias bloqueiam o controle. A API rejeita
+datas passadas.
+
 O status administrativo não paga faturas Stripe. O toggle chama
 `PATCH /admin/subscriptions/:id/installation-fee` com `waived: true` para
 dispensar e `waived: false` para reativar a cobrança no próximo checkout.

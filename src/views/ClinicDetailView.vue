@@ -26,11 +26,11 @@
               {{ clinic.plan }}
             </span>
             <span 
-              v-if="clinic.subscriptionStatus" 
+              v-if="displaySubscriptionStatus" 
               class="status-tag"
-              :class="statusClasses[clinic.subscriptionStatus] || 'status-gray'"
+              :class="statusClasses[displaySubscriptionStatus] || 'status-gray'"
             >
-              {{ statusLabels[clinic.subscriptionStatus] || clinic.subscriptionStatus }}
+              {{ statusLabels[displaySubscriptionStatus] || displaySubscriptionStatus }}
             </span>
             <span v-else class="status-tag status-gray">Sem Assinatura</span>
           </div>
@@ -154,11 +154,21 @@
 
       </div>
       <section v-else-if="activeTab === 'subscription'" class="subscription-panel">
-        <div class="subscription-panel-header"><div><h2>Assinatura</h2><p>Gerencie o plano, o status do pagamento e a taxa de instalação.</p></div><span class="status-tag" :class="statusClasses[clinic.subscriptionStatus] || 'status-gray'">{{ statusLabels[clinic.subscriptionStatus] || 'Sem assinatura' }}</span></div>
+        <div class="subscription-panel-header"><div><h2>Assinatura</h2><p>Gerencie o plano, o status do pagamento e a taxa de instalação.</p></div><span class="status-tag" :class="statusClasses[displaySubscriptionStatus] || 'status-gray'">{{ statusLabels[displaySubscriptionStatus] || 'Sem assinatura' }}</span></div>
         <div class="subscription-form-grid">
           <div class="subscription-field"><label>Plano da clínica</label><p>Plano disponível para a clínica.</p><div class="subscription-input-row"><AppSelect v-model="selectedPlan" :options="planOptions" :disabled="loadingAction" class="subscription-select" /><button class="btn-save-status" :disabled="loadingAction || selectedPlan === clinic.plan" @click="handleSavePlan">Salvar plano</button></div></div>
           <div class="subscription-field"><label>Status do pagamento</label><p>Atualiza o status administrativo da assinatura.</p><div class="subscription-input-row"><AppSelect v-model="selectedSubscriptionStatus" :options="subscriptionStatusOptions" :disabled="loadingAction" class="subscription-select" /><button class="btn-save-status" :disabled="loadingAction || !hasSubscriptionStatusChange" @click="handleUpdateSubscriptionStatus">Salvar status</button></div></div>
           <div class="subscription-field fee-field"><div class="fee-row"><div><label>Taxa de instalação</label><p>{{ feeWaived ? 'Taxa dispensada para esta clínica.' : clinic.installationFeeCharged ? 'Taxa já paga ou satisfeita.' : 'Taxa pendente para esta clínica.' }}</p></div><button v-if="authStore.user?.role === 'super admin'" type="button" class="fee-toggle" :class="{ active: feeWaived }" role="switch" :aria-checked="feeWaived" :aria-label="feeWaived ? 'Colocar taxa de instalação novamente' : 'Retirar taxa de instalação'" :disabled="loadingAction || (clinic.installationFeeCharged && !feeWaived)" @click="handleInstallationFeeToggle"><span class="fee-toggle-knob"></span></button></div><small v-if="authStore.user?.role === 'super admin'" class="fee-hint">{{ feeWaived ? 'Desative o controle para cobrar a taxa no próximo checkout.' : clinic.installationFeeCharged ? 'A taxa paga não pode ser recolocada.' : 'Ative o controle para dispensar a taxa.' }}</small></div>
+          <div class="subscription-field trial-field">
+            <label for="trial-end">Período de teste</label>
+            <p>Defina até que dia e horário a clínica poderá usar o teste.</p>
+            <p class="trial-current">{{ clinic.trialEndsAt ? `Término atual: ${formatTrialEnd(clinic.trialEndsAt)}` : 'Nenhum término de teste definido.' }}</p>
+            <div v-if="authStore.user?.role === 'super admin'" class="trial-controls">
+              <div class="trial-presets"><button v-for="days in [7, 14, 30]" :key="days" type="button" :disabled="loadingAction || !canEditTrial" @click="setTrialPreset(days)">+{{ days }} dias</button></div>
+              <div class="subscription-input-row"><input id="trial-end" v-model="selectedTrialEnd" type="datetime-local" :disabled="loadingAction || !canEditTrial" :min="minimumTrialEnd" /><button type="button" class="btn-save-status" :disabled="loadingAction || !canEditTrial || !selectedTrialEnd || new Date(selectedTrialEnd).getTime() <= Date.now()" @click="handleSaveTrialEnd">Salvar teste</button></div>
+              <small v-if="!canEditTrial" class="fee-hint">Uma assinatura Stripe ativa ou vitalícia não pode ser convertida em teste.</small>
+            </div>
+          </div>
         </div>
         <button type="button" class="advanced-plan-button" @click="openPlanModal"><Edit2 :size="15" /> Configurações avançadas do plano</button>
       </section>
@@ -246,11 +256,37 @@ const authStore = useAuthStore()
 const route = useRoute()
 
 const clinic = computed(() => store.selectedClinic)
+const displaySubscriptionStatus = computed(() => clinic.value?.isTrialAccount && new Date(clinic.value.trialEndsAt).getTime() > Date.now() ? 'trialing' : clinic.value?.subscriptionStatus)
 const feeWaived = computed(() => Boolean(clinic.value?.installationFeeWaived || clinic.value?.installationFeeCanRestore))
 const loadingAction = ref(false)
 const activeTab = ref('details')
 const logoFailed = ref(false)
 const selectedSubscriptionStatus = ref('')
+const selectedTrialEnd = ref('')
+const minimumTrialEnd = computed(() => toLocalDateTime(new Date()))
+const canEditTrial = computed(() => Boolean(clinic.value && (!clinic.value.hasStripeSubscription || !['active', 'lifetime'].includes(clinic.value.subscriptionStatus))))
+
+function toLocalDateTime(date) {
+  const value = new Date(date)
+  const offset = value.getTimezoneOffset() * 60000
+  return new Date(value.getTime() - offset).toISOString().slice(0, 16)
+}
+function formatTrialEnd(date) {
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(date))
+}
+function setTrialPreset(days) {
+  const base = clinic.value?.trialEndsAt && new Date(clinic.value.trialEndsAt) > new Date() ? new Date(clinic.value.trialEndsAt) : new Date()
+  base.setDate(base.getDate() + days)
+  selectedTrialEnd.value = toLocalDateTime(base)
+}
+async function handleSaveTrialEnd() {
+  const date = new Date(selectedTrialEnd.value)
+  if (!canEditTrial.value || Number.isNaN(date.getTime()) || date <= new Date()) return
+  if (!confirm(`Definir o fim do teste para ${formatTrialEnd(date)}?`)) return
+  loadingAction.value = true
+  try { await store.setTrialEnd(clinic.value._id, date.toISOString()) }
+  finally { loadingAction.value = false }
+}
 
 // Estado do Modal de Edição de Plano
 const showPlanModal = ref(false)
@@ -314,6 +350,7 @@ watch(() => clinic.value?.subscriptionStatus, (newStatus) => {
 }, { immediate: true })
 watch(() => clinic.value?.plan, (newPlan) => { selectedPlan.value = newPlan || 'basic' }, { immediate: true })
 watch(() => clinic.value?.logoUrl, () => { logoFailed.value = false })
+watch(() => clinic.value?.trialEndsAt, value => { selectedTrialEnd.value = value ? toLocalDateTime(value) : '' }, { immediate: true })
 
 async function handleSavePlan() {
   if (!clinic.value || selectedPlan.value === clinic.value.plan) return
@@ -420,6 +457,14 @@ onUnmounted(() => {
 .subscription-input-row { display: flex; gap: .6rem; margin-top: 1rem; }
 .subscription-input-row select { min-width: 0; flex: 1; }
 .subscription-input-row button { white-space: nowrap; }
+.trial-field { grid-column: 1 / -1; }
+.trial-current { margin-top: .6rem !important; font-weight: 600; color: #334155 !important; }
+.trial-controls { margin-top: 1rem; }
+.trial-presets { display: flex; flex-wrap: wrap; gap: .5rem; }
+.trial-presets button { border: 1px solid #cbd5e1; background: #fff; color: #1d4ed8; border-radius: .5rem; padding: .45rem .75rem; font-weight: 600; cursor: pointer; }
+.trial-presets button:hover { background: #eff6ff; }
+.trial-presets button:disabled { opacity: .5; cursor: not-allowed; }
+.trial-controls input { min-width: 0; flex: 1; padding: .6rem .75rem; border: 1px solid #cbd5e1; border-radius: .5rem; font: inherit; }
 .fee-field { grid-column: 1 / -1; }
 .fee-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .fee-hint { display: block; margin-top: .65rem; color: #64748b; font-size: .75rem; }
