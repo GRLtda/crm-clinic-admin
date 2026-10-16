@@ -28,6 +28,7 @@ const routes = [
       requiresAuth: true
     },
     children: [
+      { path: '/storage', name: 'storage', component: () => import('../views/StorageView.vue'), meta: { title: 'Armazenamento', roles: ['super admin', 'admin'] } },
       {
         path: '',
         name: 'dashboard',

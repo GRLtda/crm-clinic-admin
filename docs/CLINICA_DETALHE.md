@@ -1,7 +1,7 @@
 # Detalhe administrativo da clínica
 
 `/clinics/:id` usa uma navegação lateral como o detalhe do paciente:
-**Dados clínica**, **Assinatura** e **Auditoria**. Auditoria aparece desativada
+**Dados clínica**, **Assinatura**, **Armazenamento** (admin/super admin) e **Auditoria**. [Armazenamento](ARMAZENAMENTO.md) inclui inventário completo, arquivos isentos e filtros; `/clinics/:id?tab=storage` abre a aba diretamente. Auditoria aparece desativada
 até existir uma visão específica da clínica. A aba Assinatura contém seletores
 de plano e status administrativo, cada um com botão para salvar, além da ação
 de retirar ou recolocar a taxa de instalação para `super admin` por um toggle.

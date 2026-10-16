@@ -43,6 +43,7 @@
           <button type="button" class="clinic-tab-button" :class="{ active: activeTab === 'details' }" @click="activeTab = 'details'"><Building2 :size="18" /> Dados clínica</button>
           <button type="button" class="clinic-tab-button" :class="{ active: activeTab === 'subscription' }" @click="activeTab = 'subscription'"><Crown :size="18" /> Assinatura</button>
           <button type="button" class="clinic-tab-button" disabled aria-disabled="true"><ShieldCheck :size="18" /> Auditoria</button>
+          <button v-if="['super admin', 'admin'].includes(authStore.user?.role)" type="button" class="clinic-tab-button" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'"><HardDrive :size="18" /> Armazenamento</button>
         </aside>
         <div class="clinic-tab-content">
       <div v-if="activeTab === 'details'" class="detail-grid">
@@ -153,6 +154,7 @@
         </div>
 
       </div>
+      <StoragePanel v-else-if="activeTab === 'storage'" :clinic-id="String(clinic._id)" />
       <section v-else-if="activeTab === 'subscription'" class="subscription-panel">
         <div class="subscription-panel-header"><div><h2>Assinatura</h2><p>Gerencie o plano, o status do pagamento e a taxa de instalação.</p></div><span class="status-tag" :class="statusClasses[displaySubscriptionStatus] || 'status-gray'">{{ statusLabels[displaySubscriptionStatus] || 'Sem assinatura' }}</span></div>
         <div class="subscription-form-grid">
@@ -249,7 +251,8 @@ import { useClinicsStore } from '../stores/clinics.js'
 import { useAuthStore } from '../stores/auth.js'
 import SideDrawer from '../components/global/SideDrawer.vue'
 import AppSelect from '../components/global/AppSelect.vue'
-import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, Edit2, X, ShieldCheck } from 'lucide-vue-next'
+import StoragePanel from '../components/pages/storage/StoragePanel.vue'
+import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, Edit2, X, ShieldCheck, HardDrive } from 'lucide-vue-next'
 
 const store = useClinicsStore()
 const authStore = useAuthStore()
@@ -259,7 +262,7 @@ const clinic = computed(() => store.selectedClinic)
 const displaySubscriptionStatus = computed(() => clinic.value?.isTrialAccount && new Date(clinic.value.trialEndsAt).getTime() > Date.now() ? 'trialing' : clinic.value?.subscriptionStatus)
 const feeWaived = computed(() => Boolean(clinic.value?.installationFeeWaived || clinic.value?.installationFeeCanRestore))
 const loadingAction = ref(false)
-const activeTab = ref('details')
+const activeTab = ref(route.query.tab === 'storage' && ['super admin', 'admin'].includes(authStore.user?.role) ? 'storage' : 'details')
 const logoFailed = ref(false)
 const selectedSubscriptionStatus = ref('')
 const selectedTrialEnd = ref('')
