@@ -23,6 +23,17 @@ Contrato, permissões, índices e limites:
 
 ## Layout e estados
 
+Volumes usam unidades automáticas: B abaixo de 1 KB, KB abaixo de 1 MB,
+MB abaixo de 1 GB e GB a partir de 1 GB, com no máximo duas casas decimais
+(GB mantém duas casas). Exemplo: 0,302 GB passa a 309,25 MB. Aplica-se aos
+cards, linhas por clínica, reservas e arquivos; capacidade do plano segue GB.
+
+Clínicas bloqueadas mostram a causa abaixo do status na listagem. No detalhe,
+o aviso mostra as causas, quantidade de ocorrências e data da verificação,
+além de informar que pacientes podem continuar assinando. Bloqueios antigos
+sem registro mostram “Motivo não registrado”, sem inferir uma causa. A API
+persiste o resumo da verificação; abrir a tela não consulta o S3.
+
 Cards seguem a apresentação do armazenamento do CRM: borda discreta, branco,
 azul da marca, cantos arredondados e espaçamento uniforme. O admin reutiliza
 `AppButton`, `AppSelect`, `SearchInput`, `SkeletonLoader` e `AppPagination`.

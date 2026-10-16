@@ -3,7 +3,7 @@ import { mount, flushPromises } from "@vue/test-utils";
 import StoragePanel from "@/components/pages/storage/StoragePanel.vue";
 import AppSelect from "@/components/global/AppSelect.vue";
 import AppButton from "@/components/global/AppButton.vue";
-import { formatGB, storageError } from "@/utils/storage";
+import { formatGB, formatSize, storageError } from "@/utils/storage";
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock("@/utils/api", () => ({ default: { get: mocks.get } }));
 const GiB = 1024 ** 3;
@@ -204,6 +204,47 @@ it("resposta antiga não aparece depois de trocar de clínica", async () => {
   await flushPromises();
   expect(wrapper.text()).toContain("beta.png");
   expect(wrapper.text()).not.toContain("signature.png");
+});
+it("usa MB, KB e bytes sem ocultar volumes pequenos e limita GB a duas casas", () => {
+  expect(formatSize(0)).toBe("0 B");
+  expect(formatSize(12)).toBe("12 B");
+  expect(formatSize(1024)).toBe("1 KB");
+  expect(formatSize(0.302 * GiB)).toBe("309,25 MB");
+  expect(formatSize(6.606 * GiB)).toBe("6,61 GB");
+});
+it("mostra motivo e ocorrências do bloqueio no detalhe e na lista", async () => {
+  const blocked = {
+    ...clinic,
+    blocked: true,
+    blockInfo: {
+      checkedAt: totals.updatedAt,
+      issues: [
+        {
+          reason: "missing",
+          count: 2,
+          message: "Objeto inventariado não encontrado no S3",
+        },
+      ],
+    },
+  };
+  mocks.get.mockImplementation(async (url) => ({
+    data: url.endsWith("/files")
+      ? { data: [], nextCursor: null }
+      : url === "/storage"
+        ? { summary: totals, data: [blocked], page: 1, pages: 1, total: 1 }
+        : blocked,
+  }));
+  const detail = open({ clinicId: "a" });
+  await flushPromises();
+  expect(detail.find("[role=status]").text()).toContain(
+    "Objeto inventariado não encontrado no S3",
+  );
+  expect(detail.find("[role=status]").text()).toContain("2 ocorrências");
+  const list = open();
+  await flushPromises();
+  expect(list.find(".block-reason").text()).toContain(
+    "Objeto inventariado não encontrado no S3",
+  );
 });
 it("formata zero e preserva causa de erro padronizada", () => {
   expect(formatGB(0)).toBe("0,00 GB");

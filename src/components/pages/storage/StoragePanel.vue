@@ -200,17 +200,17 @@ onBeforeUnmount(() => {
       <div class="storage-stats">
         <div class="storage-card">
           <span>Total ocupado</span
-          ><strong>{{ formatGB(summary.totalBytes) }}</strong
+          ><strong>{{ formatSize(summary.totalBytes) }}</strong
           ><small>{{ summary.files }} arquivos inventariados</small>
         </div>
         <div class="storage-card">
           <span>Arquivos que consomem cota</span
-          ><strong>{{ formatGB(summary.billableBytes) }}</strong
+          ><strong>{{ formatSize(summary.billableBytes) }}</strong
           ><small>Imagens, documentos e outros arquivos clínicos</small>
         </div>
         <div class="storage-card">
           <span>Arquivos isentos de cota</span
-          ><strong>{{ formatGB(summary.exemptBytes) }}</strong
+          ><strong>{{ formatSize(summary.exemptBytes) }}</strong
           ><small>Assinaturas, identidade visual e fotos de perfil</small>
         </div>
       </div>
@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
         Atualizado em
         {{ new Date(summary.updatedAt).toLocaleString("pt-BR") }} · 1 GB = 1024³
         bytes. Inclui versões antigas e miniaturas. Reservas:
-        {{ formatGB(summary.reservedBytes) }}.
+        {{ formatSize(summary.reservedBytes) }}.
       </p>
       <p v-if="!clinicId" class="storage-note">
         Totais do inventário, atualizado a cada minuto. Arquivos ainda não
@@ -228,16 +228,37 @@ onBeforeUnmount(() => {
         <div class="capacity-heading">
           <strong>Cota da clínica</strong
           ><span
-            >{{ formatGB(summary.quotaUsedBytes) }} de
+            >{{ formatSize(summary.quotaUsedBytes) }} de
             {{ formatGB(summary.quotaBytes) }}</span
           >
         </div>
         <div class="storage-bar">
           <span :style="{ width: `${percent}%` }"></span>
         </div>
-        <p v-if="summary.blocked" class="storage-warning" role="status">
-          Armazenamento bloqueado para verificação.
-        </p>
+        <div v-if="summary.blocked" class="storage-warning" role="status">
+          <strong>Armazenamento bloqueado para verificação</strong>
+          <p
+            v-for="item in summary.blockInfo?.issues || [
+              {
+                reason: 'unknown',
+                message:
+                  'Motivo não registrado. Execute a conciliação para diagnosticar este bloqueio.',
+                count: 1,
+              },
+            ]"
+            :key="item.reason"
+          >
+            {{ item.message
+            }}<span v-if="item.count > 1"> ({{ item.count }} ocorrências)</span>
+          </p>
+          <small v-if="summary.blockInfo?.checkedAt"
+            >Verificado em
+            {{
+              new Date(summary.blockInfo.checkedAt).toLocaleString("pt-BR")
+            }}</small
+          >
+          <p>Assinaturas de pacientes continuam permitidas.</p>
+        </div>
         <p v-else-if="!summary.ready" class="storage-warning" role="status">
           Inventário em atualização. Os totais podem estar incompletos.
         </p>
@@ -283,9 +304,9 @@ onBeforeUnmount(() => {
                 <strong>{{ row.name }}</strong
                 ><small>{{ row.files }} arquivos</small>
               </td>
-              <td>{{ formatGB(row.totalBytes) }}</td>
-              <td>{{ formatGB(row.billableBytes) }}</td>
-              <td>{{ formatGB(row.exemptBytes) }}</td>
+              <td>{{ formatSize(row.totalBytes) }}</td>
+              <td>{{ formatSize(row.billableBytes) }}</td>
+              <td>{{ formatSize(row.exemptBytes) }}</td>
               <td>
                 <span
                   class="storage-badge"
@@ -298,6 +319,12 @@ onBeforeUnmount(() => {
                         : "Em atualização"
                   }}</span
                 >
+                <small v-if="row.blocked" class="block-reason">{{
+                  row.blockInfo?.issues
+                    ?.map((item) => item.message)
+                    .join("; ") ||
+                  "Motivo não registrado. Consulte o detalhe da clínica."
+                }}</small>
               </td>
               <td>
                 <RouterLink
@@ -417,6 +444,14 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.block-reason {
+  max-width: 280px;
+  white-space: normal;
+  line-height: 1.5;
+}
+.storage-warning p {
+  margin: 8px 0;
+}
 .storage-panel {
   display: flex;
   flex-direction: column;
