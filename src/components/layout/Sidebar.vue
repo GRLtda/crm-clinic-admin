@@ -18,7 +18,8 @@ import {
   Bell,
   ScrollText,
   BadgeDollarSign,
-  HardDrive
+  HardDrive,
+  Megaphone
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -120,6 +121,7 @@ const sidebarSections = computed(() => {
       { icon: Users, text: 'Usuários', to: '/users' },
       { icon: UserPlus, text: 'Convites', to: '/invitations' },
       { icon: Building, text: 'Clínicas', to: '/clinics' },
+      { icon: Megaphone, text: 'Campanhas', to: '/campaigns' },
       ...(['super admin', 'admin'].includes(authStore.user?.role) ? [{ icon: HardDrive, text: 'Armazenamento', to: '/storage' }] : []),
       { icon: CreditCard, text: 'Assinaturas', to: '/subscriptions' },
       ...(authStore.user?.role === 'super admin' ? [{ icon: Shield, text: 'Equipe Admin', to: '/team' }] : []),

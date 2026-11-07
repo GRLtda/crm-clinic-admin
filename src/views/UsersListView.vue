@@ -14,6 +14,12 @@
           defaultOption="Todas as Funções"
           :options="roleOptions"
         />
+        <AppSelect
+          v-model="localCampaign"
+          :icon="Megaphone"
+          defaultOption="Todas as origens"
+          :options="campaignFilterOptions"
+        />
       </div>
     </div>
 
@@ -42,6 +48,9 @@
                 <div class="user-info">
                   <span class="user-name">{{ user.name }}</span>
                   <span class="user-id">ID: {{ user._id }}</span>
+                  <span v-if="user.signupCampaign?.code" class="campaign-chip">
+                    {{ campaignLabel(user.signupCampaign.code, user.signupCampaign.label) }}
+                  </span>
                 </div>
               </div>
             </td>
@@ -130,7 +139,8 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useUsersStore } from '../stores/users.js'
-import { UserX, Filter, ArrowUpRight } from 'lucide-vue-next'
+import { UserX, Filter, ArrowUpRight, Megaphone } from 'lucide-vue-next'
+import { loadCampaignFilterOptions, campaignLabel } from '../utils/signupCampaigns.js'
 import AppPagination from '../components/global/AppPagination.vue'
 import SkeletonLoader from '../components/global/SkeletonLoader.vue'
 import StatusBadge from '../components/global/StatusBadge.vue'
@@ -151,7 +161,9 @@ const roleOptions = ref([
   { value: 'gerente', label: 'Gerente' }
 ])
 
+const campaignFilterOptions = ref([{ value: '', label: 'Todas as origens' }])
 onMounted(() => {
+  loadCampaignFilterOptions().then((options) => { campaignFilterOptions.value = options })
   skeletonRows.value = store.pagination.limit
   store.fetchUsers(1) 
 })
@@ -167,6 +179,11 @@ watch(localSearch, (newValue) => {
 
 watch(localRole, (newValue) => {
   store.setRoleFilter(newValue)
+})
+
+const localCampaign = ref(store.filters.campaign)
+watch(localCampaign, (newValue) => {
+  store.setCampaignFilter(newValue)
 })
 
 const handlePageChange = (newPage) => {
@@ -250,6 +267,17 @@ const formatDate = (dateString) => {
 .user-id {
   font-size: 0.875rem;
   color: #6b7280;
+}
+
+.campaign-chip {
+  align-self: flex-start;
+  background: #f0fdf4;
+  border-radius: 999px;
+  color: #15803d;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-top: 0.2rem;
+  padding: 2px 8px;
 }
 
 /* Células de Contato */

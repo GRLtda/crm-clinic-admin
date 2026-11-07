@@ -33,6 +33,13 @@
               {{ statusLabels[displaySubscriptionStatus] || displaySubscriptionStatus }}
             </span>
             <span v-else class="status-tag status-gray">Sem Assinatura</span>
+            <span
+              v-if="clinic.acquisition?.campaign"
+              class="status-tag status-green"
+              :title="clinic.acquisition.registeredAt ? `Cadastro em ${new Date(clinic.acquisition.registeredAt).toLocaleDateString('pt-BR')}` : undefined"
+            >
+              Origem: {{ campaignLabel(clinic.acquisition.campaign, clinic.acquisition.label) }}
+            </span>
           </div>
         </div>
         
@@ -252,6 +259,7 @@ import { useAuthStore } from '../stores/auth.js'
 import SideDrawer from '../components/global/SideDrawer.vue'
 import AppSelect from '../components/global/AppSelect.vue'
 import StoragePanel from '../components/pages/storage/StoragePanel.vue'
+import { campaignLabel } from '../utils/signupCampaigns.js'
 import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, Edit2, X, ShieldCheck, HardDrive } from 'lucide-vue-next'
 
 const store = useClinicsStore()

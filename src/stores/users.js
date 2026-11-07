@@ -16,7 +16,8 @@ export const useUsersStore = defineStore('users-admin', () => {
   // 💡 Armazena os filtros atuais
   const filters = reactive({
     search: '',
-    role: ''
+    role: '',
+    campaign: '' // origem do cadastro (ex.: 'evento')
   })
   
   const pagination = ref({
@@ -53,6 +54,9 @@ export const useUsersStore = defineStore('users-admin', () => {
     }
     if (filters.role) {
       params.role = filters.role
+    }
+    if (filters.campaign) {
+      params.campaign = filters.campaign
     }
 
     try {
@@ -99,6 +103,11 @@ export const useUsersStore = defineStore('users-admin', () => {
     await fetchUsers(1) // Reseta para a página 1
   }
 
+  async function setCampaignFilter(newCampaign) {
+    filters.campaign = newCampaign || ''
+    await fetchUsers(1)
+  }
+
   // ---------------------------------
   // Exportar 📤
   // ---------------------------------
@@ -109,6 +118,7 @@ export const useUsersStore = defineStore('users-admin', () => {
     pagination,
     fetchUsers,
     setRoleFilter, // 👈 Exportar a ação
-    setSearchFilter // 👈 Exportar a ação
+    setSearchFilter, // 👈 Exportar a ação
+    setCampaignFilter
   }
 })

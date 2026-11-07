@@ -14,7 +14,8 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
   const clinics = ref([])
 
   const filters = reactive({
-    search: ''
+    search: '',
+    campaign: '' // origem do cadastro (ex.: 'evento')
   })
 
   const pagination = ref({
@@ -48,6 +49,9 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     if (filters.search) {
       params.search = filters.search
     }
+    if (filters.campaign) {
+      params.campaign = filters.campaign
+    }
 
     try {
       const response = await axios.get(`${API_BASE_URL}/clinics`, {
@@ -77,6 +81,11 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
   async function setSearchFilter(newSearch) {
     filters.search = newSearch
     await fetchClinics(1) // Reseta para a página 1
+  }
+
+  async function setCampaignFilter(newCampaign) {
+    filters.campaign = newCampaign || ''
+    await fetchClinics(1)
   }
 
   // 👇 NOVA AÇÃO (para buscar uma clínica por ID)
@@ -212,6 +221,7 @@ export const useClinicsStore = defineStore('clinics-admin', () => {
     pagination,
     fetchClinics,
     setSearchFilter,
+    setCampaignFilter,
 
     // 👇 Exportar novos itens
     loadingDetail,

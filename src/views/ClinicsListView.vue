@@ -7,6 +7,12 @@
             v-model="localSearch"
             placeholder="Buscar clínica por nome, cnpj, id..."
           />
+          <AppSelect
+            v-model="localCampaign"
+            :icon="Megaphone"
+            defaultOption="Todas as origens"
+            :options="campaignFilterOptions"
+          />
           </div>
       </div>
   
@@ -21,7 +27,7 @@
         <RouterLink v-for="clinic in store.clinics" :key="clinic._id" :to="{ name: 'clinic-detail', params: { id: clinic._id } }" class="clinic-row">
           <span class="clinic-identity"><span class="logo-wrapper"><img v-if="clinic.logoUrl && !failedLogos.has(clinic._id)" :src="clinic.logoUrl" :alt="`Logo da clínica ${clinic.name}`" @error="failedLogos.add(clinic._id)" /><Building2 v-else :size="21" aria-hidden="true" /></span><span class="identity-text"><strong>{{ clinic.name }}</strong><small>{{ clinic.cnpj || 'CNPJ não cadastrado' }}</small></span></span>
           <span class="list-value" data-label="Responsável">{{ clinic.responsibleName || clinic.owner?.name || 'Não informado' }}</span>
-          <span class="plan-status" data-label="Plano e assinatura"><span class="plan-chip">{{ clinic.plan || 'Sem plano' }}</span><span class="status-chip" :class="statusClass(clinic.subscriptionStatus)">{{ statusLabel(clinic.subscriptionStatus) }}</span></span>
+          <span class="plan-status" data-label="Plano e assinatura"><span class="plan-chip">{{ clinic.plan || 'Sem plano' }}</span><span class="status-chip" :class="statusClass(clinic.subscriptionStatus)">{{ statusLabel(clinic.subscriptionStatus) }}</span><span v-if="clinic.acquisition?.campaign" class="status-chip campaign">{{ campaignLabel(clinic.acquisition.campaign, clinic.acquisition.label) }}</span></span>
           <span class="list-value" data-label="Localização">{{ clinic.address?.city ? `${clinic.address.city}${clinic.address.state ? `, ${clinic.address.state}` : ''}` : 'Não informada' }}</span>
           <span class="row-action">Ver clínica <ArrowRight :size="16" aria-hidden="true" /></span>
         </RouterLink>
@@ -49,7 +55,9 @@
   <script setup>
   import { onMounted, ref, watch } from 'vue'
   import { useClinicsStore } from '../stores/clinics.js' // (Ajuste o caminho)
-  import { Building2, ArrowRight } from 'lucide-vue-next'
+  import { Building2, ArrowRight, Megaphone } from 'lucide-vue-next'
+  import AppSelect from '../components/global/AppSelect.vue'
+  import { loadCampaignFilterOptions, campaignLabel } from '../utils/signupCampaigns.js'
   import AppPagination from '../components/global/AppPagination.vue'
   import SearchInput from '../components/global/SearchInput.vue'
   import SkeletonLoader from '../components/global/SkeletonLoader.vue'
@@ -62,9 +70,16 @@
   const statusClass = (status) => ({ active: 'success', lifetime: 'success', trialing: 'info', past_due: 'warning', canceled: 'danger', unpaid: 'danger' })[status] || 'neutral'
   
   const localSearch = ref(store.filters.search)
+  const localCampaign = ref(store.filters.campaign)
+
+  watch(localCampaign, (newValue) => {
+    store.setCampaignFilter(newValue)
+  })
   
   // Carrega os dados iniciais
+  const campaignFilterOptions = ref([{ value: '', label: 'Todas as origens' }])
   onMounted(() => {
+    loadCampaignFilterOptions().then((options) => { campaignFilterOptions.value = options })
     store.fetchClinics(1)
   })
   
@@ -165,6 +180,7 @@
   .status-chip.warning { color: #a16207; background: #fef3c7; }
   .status-chip.danger { color: #b91c1c; background: #fee2e2; }
   .status-chip.neutral { color: #475569; background: #f1f5f9; }
+  .status-chip.campaign { color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; }
   .row-action { display: inline-flex; justify-content: flex-end; align-items: center; gap: 5px; color: #2563eb; font-weight: 600; white-space: nowrap; }
   .skeleton-row { display: flex; }
   .skeleton-content { display: flex; flex-direction: column; gap: 7px; }

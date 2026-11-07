@@ -34,3 +34,7 @@ clínica com logo e teste as abas em larguras de desktop e celular.
 
 A lista de assinaturas usa o mesmo toggle reversível. O controle fica
 desativado somente quando a taxa já foi paga e não está dispensada.
+
+## Origem do cadastro
+
+Clínicas criadas pela campanha da feira mostram a tag **Origem: <nome da campanha>** no cabeçalho, ao lado do plano e do status. Ao passar o mouse, a tag mostra a data do cadastro (`acquisition.registeredAt`). Clínicas sem campanha não exibem a tag. Filtros: [Listas administrativas](LISTAS_ADMINISTRATIVAS.md#origem-do-cadastro-campanha-da-feira).

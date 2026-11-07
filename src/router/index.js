@@ -78,6 +78,18 @@ const routes = [
         }
       },
       {
+        path: '/campaigns',
+        name: 'signup-campaigns',
+        component: () => import('../views/SignupCampaignsView.vue'),
+        meta: { title: 'Campanhas de cadastro' }
+      },
+      {
+        path: '/campaigns/:id',
+        name: 'signup-campaign-detail',
+        component: () => import('../views/SignupCampaignDetailView.vue'),
+        meta: { title: 'Detalhes da campanha' }
+      },
+      {
         path: '/subscriptions',
         name: 'subscriptions-list',
         component: () => import('../views/SubscriptionsView.vue'),

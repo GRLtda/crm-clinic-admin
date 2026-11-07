@@ -17,6 +17,11 @@ const props = defineProps({
   cnpjMask: { type: Boolean, default: false },
   required: { type: Boolean, default: false },
   disabled: { type: Boolean, default: false },
+  // Mensagem de erro do campo (validação local ou da API). Vazio = sem erro.
+  error: { type: String, default: '' },
+  hint: { type: String, default: '' },
+  min: { type: [String, Number], default: undefined },
+  max: { type: [String, Number], default: undefined },
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -100,8 +105,15 @@ function handleBlur(event) {
       v-cpf-mask="cpfMask"
       v-cnpj-mask="cnpjMask"
       class="form-input"
+      :class="{ 'has-error': error }"
       :disabled="disabled"
+      :min="min"
+      :max="max"
+      :aria-invalid="error ? 'true' : undefined"
+      :aria-describedby="error && name ? `${name}-error` : undefined"
     />
+    <p v-if="error && type !== 'checkbox'" :id="name ? `${name}-error` : undefined" class="field-error" role="alert">{{ error }}</p>
+    <p v-else-if="hint && type !== 'checkbox'" class="field-hint">{{ hint }}</p>
   </div>
 </template>
 
@@ -145,6 +157,23 @@ function handleBlur(event) {
 .required-asterisk {
   color: #ef4444;
   margin-left: 0.25rem;
+}
+.form-input.has-error {
+  border-color: #ef4444;
+}
+.form-input.has-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+.field-error,
+.field-hint {
+  font-size: 0.8rem;
+  margin: 0.35rem 0 0;
+}
+.field-error {
+  color: #dc2626;
+}
+.field-hint {
+  color: #6b7280;
 }
 
 /* --- Styled Custom Checkbox --- */
