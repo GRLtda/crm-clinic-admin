@@ -134,7 +134,8 @@ const sidebarSections = computed(() => {
     links: [
       { icon: Bell, text: 'Notificações', to: '/notifications' },
       { icon: MessageSquare, text: 'WhatsApp', to: '/whatsapp' },
-      { icon: Star, text: 'Avaliações', to: '/surveys' }
+      { icon: Star, text: 'Avaliações', to: '/surveys' },
+      ...(['super admin', 'admin'].includes(authStore.user?.role) ? [{ icon: MessageSquare, text: 'Qualidade da Lia', to: '/lia/feedback' }] : [])
     ]
   }
 
