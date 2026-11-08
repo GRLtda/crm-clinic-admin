@@ -1,9 +1,19 @@
 <template>
   <div class="users-list-view">
-    <div class="page-header">
-      <h2 class="page-title">Usuários do Sistema</h2>
-      
-      <div class="header-actions">
+    <AppPageHeader title="Usuários do Sistema" subtitle="Consulte as contas cadastradas na plataforma, suas funções e clínicas." :icon="PageIcon" />
+
+    <AppDataTable
+      :columns="columns"
+      :rows="store.users"
+      :loading="store.loading"
+      :skeleton-rows="skeletonRows"
+      :pagination="store.pagination"
+      :empty-icon="UserX"
+      empty-title="Nenhum usuário encontrado"
+      empty-text="Tente ajustar seus filtros de busca."
+      @page-change="handlePageChange"
+    >
+      <template #filters>
         <SearchInput
           v-model="localSearch"
           placeholder="Buscar por nome, email, tel..."
@@ -20,128 +30,63 @@
           defaultOption="Todas as origens"
           :options="campaignFilterOptions"
         />
-      </div>
-    </div>
-
-    <div class="table-container">
-      <table class="users-table">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Contato</th>
-            <th>Função (Role)</th>
-            <th>Clínica</th>
-            <th>Status</th>
-            <th>Registrado em</th>
-          </tr>
-        </thead>
-        
-        <tbody v-if="!store.loading">
-          <tr v-for="user in store.users" :key="user._id">
-            <td data-label="Nome">
-              <div class="user-cell">
-                <AvatarPlaceholder
-                  :name="user.name"
-                  size="40px"
-                  fontSize="0.875rem"
-                />
-                <div class="user-info">
-                  <span class="user-name">{{ user.name }}</span>
-                  <span class="user-id">ID: {{ user._id }}</span>
-                  <span v-if="user.signupCampaign?.code" class="campaign-chip">
-                    {{ campaignLabel(user.signupCampaign.code, user.signupCampaign.label) }}
-                  </span>
-                </div>
-              </div>
-            </td>
-            <td data-label="Contato">
-              <div class="contact-cell">
-                <span class="user-email">{{ user.email }}</span>
-                <span class="user-phone">{{ user.phone }}</span>
-              </div>
-            </td>
-            <td data-label="Função">
-              <span class="user-role">{{ user.role }}</span>
-            </td>
-            <td data-label="Clínica">
-              <div class="clinic-cell">
-                <span class="user-clinic">{{ user.clinic?.name || 'N/A' }}</span>
-                <RouterLink v-if="user.clinic?._id" :to="{ name: 'clinic-detail', params: { id: user.clinic._id } }" class="clinic-link" :aria-label="`Ir para a clínica ${user.clinic.name}`">
-                  Ir para clínica <ArrowUpRight :size="15" aria-hidden="true" />
-                </RouterLink>
-              </div>
-            </td>
-            <td data-label="Status">
-              <StatusBadge
-                :variant="user.isActive ? 'success' : 'danger'"
-                :label="user.isActive ? 'Ativo' : 'Inativo'"
-              />
-            </td>
-            <td data-label="Registrado em">
-              <span class="user-date">{{
-                formatDate(user.createdAt)
-              }}</span>
-            </td>
-          </tr>
-        </tbody>
-
-        <tbody v-if="store.loading">
-          <tr v-for="n in skeletonRows" :key="n" class="skeleton-row">
-            <td data-label="Nome">
-              <div class="user-cell">
-                <SkeletonLoader width="40px" height="40px" radius="50%" />
-                <div class="user-info">
-                  <SkeletonLoader width="150px" height="16px" />
-                  <SkeletonLoader width="100px" height="12px" />
-                </div>
-              </div>
-            </td>
-            <td data-label="Contato">
-              <div class="contact-cell">
-                <SkeletonLoader width="180px" height="16px" />
-                <SkeletonLoader width="120px" height="12px" />
-              </div>
-            </td>
-            <td data-label="Função">
-              <SkeletonLoader width="80px" height="24px" radius="99px" />
-            </td>
-            <td data-label="Clínica">
-              <SkeletonLoader width="120px" height="16px" />
-            </td>
-            <td data-label="Status">
-              <SkeletonLoader width="70px" height="24px" radius="99px" />
-            </td>
-            <td data-label="Registrado em">
-              <SkeletonLoader width="100px" height="16px" />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      
-      <div v-if="!store.loading && store.users.length === 0" class="empty-state">
-        <UserX :size="48" />
-        <h3>Nenhum usuário encontrado</h3>
-        <p>Tente ajustar seus filtros de busca.</p>
-      </div>
-
-    </div> <AppPagination
-      v-if="!store.loading && store.pagination.totalPages > 1"
-      :current-page="store.pagination.page"
-      :total-pages="store.pagination.pages"
-      :total-items="store.pagination.total"
-      :items-on-page="store.users.length"
-      @page-changed="handlePageChange"
-    />
-
+      </template>
+      <template #cell-name="{ row: user }">
+        <div class="user-cell">
+          <AvatarPlaceholder :name="user.name" size="40px" fontSize="0.875rem" />
+          <div class="user-info">
+            <span class="user-name">{{ user.name }}</span>
+            <span class="user-id">ID: {{ user._id }}</span>
+            <span v-if="user.signupCampaign?.code" class="campaign-chip">
+              {{ campaignLabel(user.signupCampaign.code, user.signupCampaign.label) }}
+            </span>
+          </div>
+        </div>
+      </template>
+      <template #skeleton-name>
+        <div class="user-cell">
+          <SkeletonLoader width="40px" height="40px" radius="50%" />
+          <div class="user-info">
+            <SkeletonLoader width="150px" height="16px" />
+            <SkeletonLoader width="100px" height="12px" />
+          </div>
+        </div>
+      </template>
+      <template #cell-contact="{ row: user }">
+        <div class="contact-cell">
+          <span class="user-email">{{ user.email }}</span>
+          <span class="user-phone">{{ user.phone }}</span>
+        </div>
+      </template>
+      <template #cell-role="{ row: user }">
+        <span class="user-role">{{ user.role }}</span>
+      </template>
+      <template #cell-clinic="{ row: user }">
+        <div class="clinic-cell">
+          <span class="user-clinic">{{ user.clinic?.name || 'N/A' }}</span>
+          <RouterLink v-if="user.clinic?._id" :to="{ name: 'clinic-detail', params: { id: user.clinic._id } }" class="clinic-link" :aria-label="`Ir para a clínica ${user.clinic.name}`">
+            Ir para clínica <ArrowUpRight :size="15" aria-hidden="true" />
+          </RouterLink>
+        </div>
+      </template>
+      <template #cell-status="{ row: user }">
+        <StatusBadge :variant="user.isActive ? 'success' : 'danger'" :label="user.isActive ? 'Ativo' : 'Inativo'" />
+      </template>
+      <template #cell-createdAt="{ row: user }">
+        <span class="user-date">{{ formatDate(user.createdAt) }}</span>
+      </template>
+    </AppDataTable>
   </div>
 </template>
 
 <script setup>
+import AppPageHeader from '@/components/global/AppPageHeader.vue'
+import { Users as PageIcon } from 'lucide-vue-next'
 import { onMounted, ref, watch } from 'vue'
 import { useUsersStore } from '../stores/users.js'
 import { UserX, Filter, ArrowUpRight, Megaphone } from 'lucide-vue-next'
 import { loadCampaignFilterOptions, campaignLabel } from '../utils/signupCampaigns.js'
-import AppPagination from '../components/global/AppPagination.vue'
+import AppDataTable from '../components/global/AppDataTable.vue'
 import SkeletonLoader from '../components/global/SkeletonLoader.vue'
 import StatusBadge from '../components/global/StatusBadge.vue'
 import SearchInput from '../components/global/SearchInput.vue'
@@ -150,6 +95,14 @@ import AvatarPlaceholder from '../components/global/AvatarPlaceholder.vue' // �
 
 const store = useUsersStore()
 const skeletonRows = ref(10)
+const columns = [
+  { key: 'name', label: 'Nome' },
+  { key: 'contact', label: 'Contato' },
+  { key: 'role', label: 'Função (Role)', width: '120px' },
+  { key: 'clinic', label: 'Clínica' },
+  { key: 'status', label: 'Status', width: '100px' },
+  { key: 'createdAt', label: 'Registrado em', width: '120px' },
+]
 const debounceTimeout = ref(null)
 
 const localSearch = ref(store.filters.search)
@@ -218,36 +171,6 @@ const formatDate = (dateString) => {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
-}
-
-/* Container da Tabela */
-.table-container {
-  background-color: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  overflow: hidden;
-}
-
-.users-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-}
-
-.users-table th,
-.users-table td {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  vertical-align: middle;
-}
-
-.users-table th {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background-color: #f9fafb;
 }
 
 /* Células de Usuário */
@@ -328,119 +251,8 @@ const formatDate = (dateString) => {
   text-transform: none;
 }
 
-/* Skeleton */
-.skeleton-row td {
-  border-bottom: 1px solid #e5e7eb;
-}
-.skeleton-row .user-info {
-  gap: 0.5rem;
-}
-.skeleton-row .contact-cell {
-  gap: 0.5rem;
-}
-
-/* Estado Vazio */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  color: #6b7280;
-}
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 1rem 0 0.25rem;
-}
-.empty-state p {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0;
-}
-
-
-/* ------------------------- */
-/* RESPONSIVO (768px)        */
-/* ------------------------- */
 @media (max-width: 768px) {
-  .users-table thead {
-    display: none;
-  }
-
-  .table-container {
-    border: none;
-    background-color: transparent;
-    border-radius: 0;
-  }
-
-  .users-table tr {
-    display: block;
-    background-color: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-  .users-table tbody tr:last-child {
-    margin-bottom: 0;
-  }
-
-  .users-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #f3f4f6;
-  }
-  .users-table tr td:last-child {
-    border-bottom: none;
-  }
-
-  .users-table td::before {
-    content: attr(data-label);
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    margin-right: 1rem;
-  }
-  
-  .users-table td .user-cell,
-  .users-table td .contact-cell {
-    flex-grow: 1;
-    text-align: right;
-  }
-  .users-table td .user-name {
-    font-size: 0.875rem;
-  }
-  .users-table td .user-id {
-    font-size: 0.75rem;
-  }
-  .users-table td .user-email {
-    font-size: 0.875rem;
-    word-break: break-all;
-  }
-
-  /* Garante que a célula de usuário (avatar + info) 
-    fique alinhada à direita no mobile.
-  */
-  .users-table td[data-label="Nome"] .user-cell {
-    justify-content: flex-end;
-  }
-
-  .users-table td .clinic-cell { align-items: flex-end; text-align: right; }
-
-  .skeleton-row td {
-    display: flex;
-    justify-content: space-between;
-  }
-  .skeleton-row td[data-label="Nome"] .user-info {
-    align-items: flex-end;
-  }
-  .skeleton-row td[data-label="Contato"] .contact-cell {
-    align-items: flex-end;
-  }
+  .user-cell { justify-content: flex-end; text-align: left; }
+  .contact-cell, .clinic-cell { align-items: flex-end; text-align: right; }
 }
 </style>

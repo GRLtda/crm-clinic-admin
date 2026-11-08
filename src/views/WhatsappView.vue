@@ -1,9 +1,6 @@
 <template>
   <div class="whatsapp-view">
-    <h2 class="page-title">Conexão WhatsApp</h2>
-    <p class="page-subtitle">
-      Gerencie a conexão e envie mensagens em massa para os donos de clínicas.
-    </p>
+    <AppPageHeader title="Conexão WhatsApp" subtitle="Gerencie a conexão e envie mensagens em massa para os donos de clínicas." :icon="PageIcon" />
 
     <!-- ESTADO: Carregando -->
     <div v-if="store.loading" class="info-card loading-card">
@@ -215,6 +212,8 @@
 </template>
 
 <script setup>
+import AppPageHeader from '@/components/global/AppPageHeader.vue'
+import { MessageCircle as PageIcon } from 'lucide-vue-next'
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useWhatsappStore } from '../stores/whatsapp.js'
 import {

@@ -1,11 +1,12 @@
 <template>
   <div class="plans-manager-view animate-fade-in">
-    <div class="page-header">
-      <h2 class="page-title">Gerenciar Planos</h2>
+    <AppPageHeader title="Gerenciar Planos" subtitle="Crie e edite os planos disponíveis para as clínicas." :icon="PageIcon">
+      <template #actions>
       <button @click="openModal()" class="btn-primary">
         + Novo Plano
       </button>
-    </div>
+      </template>
+    </AppPageHeader>
 
     <!-- Loading State -->
     <div v-if="loading" class="loading-state">
@@ -124,6 +125,8 @@
 </template>
 
 <script setup>
+import AppPageHeader from '@/components/global/AppPageHeader.vue'
+import { Layers as PageIcon } from 'lucide-vue-next'
 import { ref, onMounted, reactive } from 'vue';
 import axios from 'axios';
 import { useAuthStore } from '../stores/auth';

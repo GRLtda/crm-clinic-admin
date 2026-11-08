@@ -1,4 +1,6 @@
 <script setup>
+import AppPageHeader from '@/components/global/AppPageHeader.vue'
+import { Bell as PageIcon } from 'lucide-vue-next'
 import { ref, onMounted } from 'vue'
 import { Send, CheckCircle, AlertCircle, LoaderCircle, Users, Stethoscope, Building2, Globe } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth' // using for fetching custom API data if necessary
@@ -89,13 +91,7 @@ const submitNotification = async () => {
 
 <template>
   <div class="notifications-view page-container">
-    <div class="page-header">
-      <h2 class="page-title">Disparar Notificações Push</h2>
-      <p class="page-description">
-        Envie alertas em tempo real para os usuários da aplicação AgendaDoutor. 
-        As notificações aparecerão na tela se aceitaram a permissão ou no sino de notificações do painel.
-      </p>
-    </div>
+    <AppPageHeader title="Disparar Notificações Push" subtitle="Envie alertas em tempo real para os usuários da aplicação AgendaDoutor." :icon="PageIcon" />
 
     <!-- Alert de Feedback -->
     <div v-if="notificationFeedback" class="feedback-alert" :class="notificationFeedback.type">

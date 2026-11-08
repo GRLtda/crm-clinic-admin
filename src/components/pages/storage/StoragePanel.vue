@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { RouterLink } from "vue-router";
-import { HardDrive, RefreshCw, ArrowRight } from "lucide-vue-next";
+import { HardDrive, RefreshCw, ArrowRight, Database, Gauge, BadgeCheck, Info } from "lucide-vue-next";
 import api from "@/utils/api";
 import {
   formatGB,
@@ -9,8 +9,11 @@ import {
   categoryLabel,
   storageError,
 } from "@/utils/storage";
+import AppPageHeader from "@/components/global/AppPageHeader.vue";
 import AppButton from "@/components/global/AppButton.vue";
 import AppPagination from "@/components/global/AppPagination.vue";
+import StatusBadge from "@/components/global/StatusBadge.vue";
+import AppDataTable from "@/components/global/AppDataTable.vue";
 import AppSelect from "@/components/global/AppSelect.vue";
 import SearchInput from "@/components/global/SearchInput.vue";
 import SkeletonLoader from "@/components/global/SkeletonLoader.vue";
@@ -19,6 +22,21 @@ import emptyArt from "@/assets/illustrations/storage-empty.svg?raw";
 
 const props = defineProps({ clinicId: { type: String, default: "" } });
 const summary = ref(null);
+const clinicColumns = [
+  { key: "name", label: "Clínica" },
+  { key: "total", label: "Total ocupado", width: "130px", align: "right" },
+  { key: "billable", label: "Consome cota", width: "130px", align: "right" },
+  { key: "exempt", label: "Isento", width: "110px", align: "right" },
+  { key: "inventory", label: "Inventário" },
+  { key: "link", label: "", width: "150px", align: "right" },
+];
+const fileColumns = [
+  { key: "filename", label: "Arquivo" },
+  { key: "category", label: "Categoria" },
+  { key: "size", label: "Tamanho", width: "100px" },
+  { key: "billable", label: "Cota", width: "130px" },
+  { key: "status", label: "Estado", width: "150px" },
+];
 const rows = ref([]);
 const loading = ref(false);
 const error = ref("");
@@ -169,7 +187,19 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="storage-panel">
-    <header class="storage-header">
+    <AppPageHeader
+      v-if="!clinicId"
+      title="Armazenamento"
+      subtitle="Espaço ocupado pelas clínicas, incluindo arquivos mantidos pela plataforma."
+      :icon="HardDrive"
+    >
+      <template #actions>
+        <AppButton :disabled="loading || filesLoading" @click="refresh"
+          ><RefreshCw :size="16" /> Atualizar</AppButton
+        >
+      </template>
+    </AppPageHeader>
+    <header v-else class="storage-header">
       <div>
         <h2><HardDrive :size="22" /> Armazenamento</h2>
         <p>
@@ -198,31 +228,43 @@ onBeforeUnmount(() => {
     </div>
     <template v-if="summary">
       <div class="storage-stats">
-        <div class="storage-card">
-          <span>Total ocupado</span
-          ><strong>{{ formatSize(summary.totalBytes) }}</strong
-          ><small>{{ summary.files }} arquivos inventariados</small>
+        <div class="storage-card stat-card">
+          <div class="stat-icon"><Database :size="20" /></div>
+          <div class="stat-body">
+            <span>Total ocupado</span>
+            <strong>{{ formatSize(summary.totalBytes) }}</strong>
+            <small>{{ summary.files }} arquivos inventariados</small>
+          </div>
         </div>
-        <div class="storage-card">
-          <span>Arquivos que consomem cota</span
-          ><strong>{{ formatSize(summary.billableBytes) }}</strong
-          ><small>Imagens, documentos e outros arquivos clínicos</small>
+        <div class="storage-card stat-card">
+          <div class="stat-icon"><Gauge :size="20" /></div>
+          <div class="stat-body">
+            <span>Arquivos que consomem cota</span>
+            <strong>{{ formatSize(summary.billableBytes) }}</strong>
+            <small>Imagens, documentos e outros arquivos clínicos</small>
+          </div>
         </div>
-        <div class="storage-card">
-          <span>Arquivos isentos de cota</span
-          ><strong>{{ formatSize(summary.exemptBytes) }}</strong
-          ><small>Assinaturas, identidade visual e fotos de perfil</small>
+        <div class="storage-card stat-card">
+          <div class="stat-icon exempt"><BadgeCheck :size="20" /></div>
+          <div class="stat-body">
+            <span>Arquivos isentos de cota</span>
+            <strong>{{ formatSize(summary.exemptBytes) }}</strong>
+            <small>Assinaturas, identidade visual e fotos de perfil</small>
+          </div>
         </div>
       </div>
       <p class="storage-note">
-        Atualizado em
-        {{ new Date(summary.updatedAt).toLocaleString("pt-BR") }} · 1 GB = 1024³
-        bytes. Inclui versões antigas e miniaturas. Reservas:
-        {{ formatSize(summary.reservedBytes) }}.
-      </p>
-      <p v-if="!clinicId" class="storage-note">
-        Totais do inventário, atualizado a cada minuto. Arquivos ainda não
-        inventariados não estão incluídos.
+        <Info :size="14" aria-hidden="true" />
+        <span>
+          Atualizado em
+          {{ new Date(summary.updatedAt).toLocaleString("pt-BR") }} · 1 GB =
+          1024³ bytes. Inclui versões antigas e miniaturas. Reservas:
+          {{ formatSize(summary.reservedBytes) }}.
+          <template v-if="!clinicId">
+            O inventário é atualizado a cada minuto; arquivos ainda não
+            inventariados não estão incluídos.
+          </template>
+        </span>
       </p>
       <div v-if="clinicId" class="storage-card">
         <div class="capacity-heading">
@@ -279,75 +321,49 @@ onBeforeUnmount(() => {
       </div>
     </template>
     <template v-if="!clinicId">
-      <SearchInput
-        v-model="search"
-        placeholder="Buscar pelo início do nome da clínica"
-      />
-      <div v-if="loading" class="storage-skeleton" aria-busy="true">
-        <SkeletonLoader v-for="n in 5" :key="n" height="50px" />
-      </div>
-      <div v-else-if="rows.length" class="storage-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Clínica</th>
-              <th>Total ocupado</th>
-              <th>Consome cota</th>
-              <th>Isento</th>
-              <th>Inventário</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row._id">
-              <td>
-                <strong>{{ row.name }}</strong
-                ><small>{{ row.files }} arquivos</small>
-              </td>
-              <td>{{ formatSize(row.totalBytes) }}</td>
-              <td>{{ formatSize(row.billableBytes) }}</td>
-              <td>{{ formatSize(row.exemptBytes) }}</td>
-              <td>
-                <span
-                  class="storage-badge"
-                  :class="{ warning: row.blocked || !row.ready }"
-                  >{{
-                    row.blocked
-                      ? "Bloqueado"
-                      : row.ready
-                        ? "Verificado"
-                        : "Em atualização"
-                  }}</span
-                >
-                <small v-if="row.blocked" class="block-reason">{{
-                  row.blockInfo?.issues
-                    ?.map((item) => item.message)
-                    .join("; ") ||
-                  "Motivo não registrado. Consulte o detalhe da clínica."
-                }}</small>
-              </td>
-              <td>
-                <RouterLink
-                  :to="{
-                    name: 'clinic-detail',
-                    params: { id: row._id },
-                    query: { tab: 'storage' },
-                  }"
-                  class="storage-link"
-                  >Ver arquivos <ArrowRight :size="15"
-                /></RouterLink>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <AppEmptyState
-        v-else-if="!error"
-        title="Nenhuma clínica encontrada"
-        text="Ajuste a busca para consultar o armazenamento."
-        ><template #illustration
-          ><div class="storage-art" v-html="emptyArt"></div></template
-      ></AppEmptyState>
+      <AppDataTable
+        v-if="!error || loading || rows.length"
+        height="calc(100vh - 36rem)"
+        :columns="clinicColumns"
+        :rows="rows"
+        :loading="loading"
+        :skeleton-rows="5"
+        empty-title="Nenhuma clínica encontrada"
+        empty-text="Ajuste a busca para consultar o armazenamento."
+      >
+        <template #filters>
+          <SearchInput
+            v-model="search"
+            placeholder="Buscar pelo início do nome da clínica"
+          />
+        </template>
+        <template #empty-illustration>
+          <div class="storage-art" v-html="emptyArt"></div>
+        </template>
+        <template #cell-name="{ row }">
+          <strong>{{ row.name }}</strong><small>{{ row.files }} arquivos</small>
+        </template>
+        <template #cell-total="{ row }">{{ formatSize(row.totalBytes) }}</template>
+        <template #cell-billable="{ row }">{{ formatSize(row.billableBytes) }}</template>
+        <template #cell-exempt="{ row }">{{ formatSize(row.exemptBytes) }}</template>
+        <template #cell-inventory="{ row }">
+          <StatusBadge
+            :variant="row.blocked ? 'danger' : row.ready ? 'success' : 'neutral'"
+            :label="row.blocked ? 'Bloqueado' : row.ready ? 'Verificado' : 'Em atualização'"
+          />
+          <small v-if="row.blocked" class="block-reason">{{
+            row.blockInfo?.issues?.map((item) => item.message).join("; ") ||
+            "Motivo não registrado. Consulte o detalhe da clínica."
+          }}</small>
+        </template>
+        <template #cell-link="{ row }">
+          <RouterLink
+            :to="{ name: 'clinic-detail', params: { id: row._id }, query: { tab: 'storage' } }"
+            class="storage-link"
+            >Ver arquivos <ArrowRight :size="15"
+          /></RouterLink>
+        </template>
+      </AppDataTable>
       <AppPagination
         v-if="!loading"
         :current-page="page"
@@ -384,48 +400,27 @@ onBeforeUnmount(() => {
       >
         <SkeletonLoader v-for="n in 5" :key="n" height="50px" />
       </div>
-      <div v-else-if="files.length" class="storage-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Arquivo</th>
-              <th>Categoria</th>
-              <th>Tamanho</th>
-              <th>Cota</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="file in files" :key="file._id">
-              <td class="filename">
-                <strong>{{ file.filename }}</strong
-                ><small
-                  >{{ file.objectCount }} objetos / versões ·
-                  {{
-                    new Date(file.createdAt).toLocaleDateString("pt-BR")
-                  }}</small
-                >
-              </td>
-              <td>{{ categoryLabel(file.category) }}</td>
-              <td>{{ formatSize(file.sizeBytes) }}</td>
-              <td>
-                <span class="storage-badge">{{
-                  file.billable === false ? "Isento" : "Consome cota"
-                }}</span>
-              </td>
-              <td>
-                {{
-                  {
-                    active: "Armazenado",
-                    deleting: "Exclusão pendente",
-                    reserved: "Upload pendente",
-                  }[file.status]
-                }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <AppDataTable
+        v-else-if="files.length"
+        height="calc(100vh - 36rem)"
+        :columns="fileColumns"
+        :rows="files"
+      >
+        <template #cell-filename="{ row: file }">
+          <div class="filename">
+            <strong>{{ file.filename }}</strong>
+            <small>{{ file.objectCount }} objetos / versões · {{ new Date(file.createdAt).toLocaleDateString("pt-BR") }}</small>
+          </div>
+        </template>
+        <template #cell-category="{ row: file }">{{ categoryLabel(file.category) }}</template>
+        <template #cell-size="{ row: file }">{{ formatSize(file.sizeBytes) }}</template>
+        <template #cell-billable="{ row: file }">
+          <span class="storage-badge">{{ file.billable === false ? "Isento" : "Consome cota" }}</span>
+        </template>
+        <template #cell-status="{ row: file }">{{
+          { active: "Armazenado", deleting: "Exclusão pendente", reserved: "Upload pendente" }[file.status]
+        }}</template>
+      </AppDataTable>
       <AppEmptyState
         v-else-if="!filesError"
         title="Nenhum arquivo encontrado"
@@ -491,29 +486,72 @@ onBeforeUnmount(() => {
   gap: 16px;
 }
 .storage-card {
-  padding: 22px;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
   background: white;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+.stat-card {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14px;
+}
+.stat-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: #2563eb;
+  background: #eff6ff;
+}
+.stat-icon.exempt {
+  color: #15803d;
+  background: #f0fdf4;
+}
+.stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.stat-body > span,
 .storage-card > span {
   font-size: 13px;
   color: #64748b;
 }
+.stat-body > strong,
 .storage-card > strong {
-  font-size: 28px;
-  font-weight: 650;
-  color: #1e40af;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f172a;
+}
+.stat-body small {
+  margin-top: 2px;
 }
 .storage-card small {
   color: #64748b;
   font-size: 12px;
 }
 .storage-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   margin: 0;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+}
+.storage-note svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: #94a3b8;
 }
 .storage-bar {
   height: 10px;
@@ -543,40 +581,13 @@ onBeforeUnmount(() => {
 .storage-categories span small {
   margin-left: 8px;
 }
-.storage-table-wrap {
-  overflow-x: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: white;
-}
-table {
-  border-collapse: collapse;
-  width: 100%;
-  font-size: 13px;
-  text-align: left;
-  white-space: nowrap;
-}
-th {
-  color: #64748b;
-  font-weight: 500;
-  background: #f8fafc;
-}
-th,
-td {
-  padding: 16px;
-  border-bottom: 1px solid #f1f5f9;
-}
-tbody tr:last-child td {
-  border-bottom: 0;
-}
-td small {
+small {
   display: block;
   margin-top: 5px;
   color: #64748b;
 }
 .filename {
   white-space: normal;
-  min-width: 200px;
   max-width: 340px;
   overflow-wrap: anywhere;
 }
@@ -601,10 +612,16 @@ td small {
 }
 .storage-link {
   display: inline-flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
   color: #2563eb;
   text-decoration: none;
+}
+.storage-link:hover {
+  text-decoration: underline;
 }
 .storage-error {
   display: flex;

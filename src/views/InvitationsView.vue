@@ -1,95 +1,55 @@
 <template>
     <div class="invitations-list-view">
-      <div class="page-header">
-        <h2 class="page-title">Convites de Registro</h2>
-        <div class="header-actions">
-          <AppSelect
-            v-model="localStatus"
-            :icon="Filter"
-            :options="statusOptions"
-            class="filter-select"
-          />
+      <AppPageHeader title="Convites de Registro" subtitle="Convide novos usuários e acompanhe os convites pendentes." :icon="PageIcon">
+        <template #actions>
           <button class="btn-primary-invite" @click="isInviteModalOpen = true">
             <UserPlus :size="18" />
             Convidar Usuário
           </button>
-        </div>
-      </div>
+        </template>
+      </AppPageHeader>
   
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>E-mail</th>
-              <th>Telefone</th>
-              <th>Plano</th>
-              <th>Status</th>
-              <th>Expira Em</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          
-          <tbody v-if="!store.loadingList">
-            <tr v-for="invite in store.invitations" :key="invite._id">
-              <td data-label="E-mail">
-                <span class="email-cell">{{ invite.email }}</span>
-              </td>
-              <td data-label="Telefone">
-                <span>{{ invite.phone || 'N/A' }}</span>
-              </td>
-              <td data-label="Plano">
-                <span class="plan-cell">{{ invite.plan }}</span>
-              </td>
-              <td data-label="Status">
-                <StatusBadge
-                  :variant="invite.status === 'pending' ? 'neutral' : 'success'"
-                  :label="invite.status === 'pending' ? 'Pendente' : 'Aceito'"
-                />
-              </td>
-              <td data-label="Expira Em">
-                <span>{{ formatDate(invite.expiresAt) }}</span>
-              </td>
-              <td data-label="Ações">
-                <button
-                  v-if="invite.status === 'pending'"
-                  class="btn-action-delete"
-                  title="Excluir convite"
-                  @click="handleDelete(invite._id, invite.email)"
-                >
-                  <Trash2 :size="18" />
-                </button>
-              </td>
-            </tr>
-          </tbody>
-  
-          <tbody v-if="store.loadingList">
-            <tr v-for="n in skeletonRows" :key="n" class="skeleton-row">
-              <td data-label="E-mail"><SkeletonLoader width="220px" height="16px" /></td>
-              <td data-label="Telefone"><SkeletonLoader width="120px" height="16px" /></td>
-              <td data-label="Plano"><SkeletonLoader width="80px" height="24px" radius="99px" /></td>
-              <td data-label="Status"><SkeletonLoader width="90px" height="24px" radius="99px" /></td>
-              <td data-label="Expira Em"><SkeletonLoader width="100px" height="16px" /></td>
-              <td data-label="Ações"><SkeletonLoader width="32px" height="32px" radius="0.375rem" /></td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div v-if="!store.loadingList && store.invitations.length === 0" class="empty-state">
-          <MailX :size="48" />
-          <h3>Nenhum convite encontrado</h3>
-          <p>Tente ajustar o filtro de status ou crie um novo convite.</p>
-        </div>
-      </div>
-      
-      <AppPagination
-        v-if="!store.loadingList && store.pagination.pages > 1"
-        :current-page="store.pagination.page"
-        :total-pages="store.pagination.pages"
-        :total-items="store.pagination.total"
-        :items-on-page="store.invitations.length"
-        @page-changed="handlePageChange"
-      />
-  
+      <AppDataTable
+        :columns="columns"
+        :rows="store.invitations"
+        :loading="store.loadingList"
+        :skeleton-rows="skeletonRows"
+        :pagination="store.pagination"
+        :empty-icon="MailX"
+        empty-title="Nenhum convite encontrado"
+        empty-text="Tente ajustar o filtro de status ou crie um novo convite."
+        @page-change="handlePageChange"
+      >
+        <template #filters>
+        <AppSelect
+          v-model="localStatus"
+          :icon="Filter"
+          :options="statusOptions"
+          class="filter-select"
+        />
+        </template>
+        <template #cell-email="{ row: invite }"><span class="email-cell">{{ invite.email }}</span></template>
+        <template #cell-phone="{ row: invite }">{{ invite.phone || 'N/A' }}</template>
+        <template #cell-plan="{ row: invite }"><span class="plan-cell">{{ invite.plan }}</span></template>
+        <template #cell-status="{ row: invite }">
+          <StatusBadge
+            :variant="invite.status === 'pending' ? 'neutral' : 'success'"
+            :label="invite.status === 'pending' ? 'Pendente' : 'Aceito'"
+          />
+        </template>
+        <template #cell-expiresAt="{ row: invite }">{{ formatDate(invite.expiresAt) }}</template>
+        <template #cell-actions="{ row: invite }">
+          <button
+            v-if="invite.status === 'pending'"
+            class="btn-action-delete"
+            title="Excluir convite"
+            @click="handleDelete(invite._id, invite.email)"
+          >
+            <Trash2 :size="18" />
+          </button>
+        </template>
+      </AppDataTable>
+
       <InviteUserModal
         :show="isInviteModalOpen"
         @close="isInviteModalOpen = false"
@@ -105,6 +65,8 @@
   </template>
   
   <script setup>
+import AppPageHeader from '@/components/global/AppPageHeader.vue'
+import { MailPlus as PageIcon } from 'lucide-vue-next'
   import { onMounted, ref, watch } from 'vue'
   import { useInvitationsStore } from '../stores/invitations.js'
   import { UserPlus, Trash2, Filter, MailX } from 'lucide-vue-next'
@@ -209,38 +171,6 @@
     background-color: var(--color-primary-dark, #0369a1);
   }
   
-  /* Estilos da Tabela (similares ao UsersListView) */
-  .table-container {
-    background-color: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-  }
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
-  }
-  .data-table th,
-  .data-table td {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    vertical-align: middle;
-    font-size: 0.875rem;
-    color: #374151;
-  }
-  .data-table tr:last-child td {
-    border-bottom: none;
-  }
-  .data-table th {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    background-color: #f9fafb;
-  }
-  
   .email-cell {
     font-weight: 500;
     color: #111827;
@@ -265,61 +195,4 @@
     color: #991b1b;
   }
   
-  /* Estado Vazio */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 4rem 2rem;
-    color: #6b7280;
-  }
-  .empty-state h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #111827;
-    margin: 1rem 0 0.25rem;
-  }
-  .empty-state p {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin: 0;
-    max-width: 300px;
-    text-align: center;
-  }
-  
-  /* Responsivo (baseado no UsersListView) */
-  @media (max-width: 768px) {
-    .data-table thead {
-      display: none;
-    }
-    .table-container {
-      border: none;
-      background-color: transparent;
-    }
-    .data-table tr {
-      display: block;
-      background-color: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 0.75rem;
-      margin-bottom: 1rem;
-    }
-    .data-table td {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 1rem;
-    }
-    .data-table td::before {
-      content: attr(data-label);
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      font-size: 0.75rem;
-    }
-    .skeleton-row td {
-       display: flex;
-       justify-content: space-between;
-    }
-  }
   </style>

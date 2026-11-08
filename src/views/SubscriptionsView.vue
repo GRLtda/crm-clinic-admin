@@ -1,12 +1,7 @@
 <template>
   <div class="subscriptions-view">
     <!-- Header da Página -->
-    <div class="page-header">
-      <div class="header-info">
-        <h1>Assinaturas</h1>
-        <p>Gerencie as assinaturas das clínicas</p>
-      </div>
-    </div>
+    <AppPageHeader title="Assinaturas" subtitle="Gerencie as assinaturas das clínicas." :icon="PageIcon" />
 
     <!-- Cards de Resumo -->
     <div class="summary-cards">
@@ -417,6 +412,8 @@
 </template>
 
 <script setup>
+import AppPageHeader from '@/components/global/AppPageHeader.vue'
+import { CreditCard as PageIcon } from 'lucide-vue-next'
 import { ref, onMounted, computed } from 'vue'
 import { useSubscriptionsStore } from '../stores/subscriptions.js'
 import { useClinicsStore } from '../stores/clinics.js'

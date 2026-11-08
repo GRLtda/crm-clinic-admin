@@ -1,929 +1,395 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { Plus, Users, Shield, Trash2, Mail, Phone, Calendar, AlertCircle, Copy, Check, X, Loader2 } from 'lucide-vue-next'
+import { computed, onMounted, ref, watch } from 'vue'
+import { ShieldCheck, Plus, Trash2, Copy, Check, UserX, Filter } from 'lucide-vue-next'
+import { useToast } from 'vue-toastification'
 import api from '../utils/api'
 import { useAuthStore } from '../stores/auth'
-import { useToast } from 'vue-toastification'
+import AppPageHeader from '../components/global/AppPageHeader.vue'
+import AppDataTable from '../components/global/AppDataTable.vue'
+import AppModal from '../components/global/AppModal.vue'
+import AppButton from '../components/global/AppButton.vue'
+import AppSelect from '../components/global/AppSelect.vue'
+import StyledSelect from '../components/global/StyledSelect.vue'
+import FormInput from '../components/global/FormInput.vue'
+import SearchInput from '../components/global/SearchInput.vue'
+import StatusBadge from '../components/global/StatusBadge.vue'
+import SkeletonLoader from '../components/global/SkeletonLoader.vue'
+import AvatarPlaceholder from '../components/global/AvatarPlaceholder.vue'
 
 const authStore = useAuthStore()
 const toast = useToast()
-
-const admins = ref([])
-const loading = ref(true)
-const isCreateModalOpen = ref(false)
-const showPasswordModal = ref(false)
-const generatedAdmin = ref(null)
-
-const newAdmin = ref({
-  name: '',
-  email: '',
-  phone: '',
-  role: 'admin'
-})
-
-const lastAutoEmail = ref('')
-
-const handleNameInput = () => {
-  if (!newAdmin.value.name) return
-  
-  // Clean name: removes multiple spaces, Trim
-  const cleanName = newAdmin.value.name.replace(/\s+/g, ' ').trim().toLowerCase()
-  const nameParts = cleanName.split(' ')
-  
-  if (nameParts.length >= 2) {
-    const firstName = nameParts[0]
-    const lastName = nameParts[nameParts.length - 1]
-    
-    // Simple sanitization (remove special chars from names if any)
-    const sanitize = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "")
-    const generatedEmail = `${sanitize(firstName)}.${sanitize(lastName)}@agendadoutor.com`
-    
-    // Logic: Fill if empty OR if we are typing and the previous value was auto-generated
-    if (!newAdmin.value.email || newAdmin.value.email === lastAutoEmail.value) {
-      newAdmin.value.email = generatedEmail
-      lastAutoEmail.value = generatedEmail
-    }
+const copied = ref(false)
+async function copyPassword(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    copied.value = true
+    toast.info('Senha copiada para a área de transferência.')
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch {
+    toast.error('Não foi possível copiar a senha.')
   }
 }
 
-const fetchTeam = async () => {
+const isSuperAdmin = computed(() => authStore.user?.role === 'super admin')
+
+// ----- Listagem (GET /team) -----
+const admins = ref([])
+const loading = ref(true)
+const search = ref('')
+const roleFilter = ref('')
+
+const columns = [
+  { key: 'member', label: 'Membro' },
+  { key: 'role', label: 'Papel', width: '140px' },
+  { key: 'contact', label: 'Contato' },
+  { key: 'status', label: 'Status', width: '170px' },
+  { key: 'actions', label: 'Ações', width: '80px', align: 'right' },
+]
+
+const roleOptions = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'suporte', label: 'Suporte' },
+  { value: 'super admin', label: 'Super admin' },
+]
+const roleDescriptions = {
+  'super admin': 'Acesso total à plataforma.',
+  admin: 'Gestão padrão das clínicas e usuários.',
+  suporte: 'Apenas consulta e suporte.',
+}
+
+const filteredAdmins = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  return admins.value.filter((admin) => {
+    if (roleFilter.value && admin.role !== roleFilter.value) return false
+    if (!term) return true
+    return [admin.name, admin.email, admin.phone].some((v) => String(v || '').toLowerCase().includes(term))
+  })
+})
+
+const stats = computed(() => ({
+  total: admins.value.length,
+  superAdmins: admins.value.filter((a) => a.role === 'super admin').length,
+  pending: admins.value.filter((a) => a.firstLogin).length,
+}))
+
+const formatDate = (date) => (date ? new Date(date).toLocaleDateString('pt-BR') : '')
+
+async function fetchTeam() {
   loading.value = true
   try {
-    const response = await api.get('/team')
-    admins.value = response.data
+    const { data } = await api.get('/team')
+    admins.value = data
   } catch (err) {
-    toast.error('Erro ao carregar equipe.')
     console.error(err)
+    toast.error('Erro ao carregar equipe.')
   } finally {
     loading.value = false
   }
 }
 
-const handleCreateAdmin = async () => {
-  try {
-    const response = await api.post('/team', newAdmin.value)
-    generatedAdmin.value = response.data
-    isCreateModalOpen.value = false
-    showPasswordModal.value = true
-    fetchTeam()
-    toast.success('Administrador convidado com sucesso!')
-    newAdmin.value = { name: '', email: '', phone: '', role: 'admin' }
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Erro ao criar administrador.')
-  }
+// ----- Remoção (DELETE /team/:id) -----
+const adminToRemove = ref(null)
+const removing = ref(false)
+
+function canRemove(admin) {
+  if (admin._id === authStore.user?._id) return false
+  return admin.role !== 'super admin' || isSuperAdmin.value
 }
 
-const handleDeleteAdmin = async (admin) => {
+function askRemove(admin) {
   if (admin._id === authStore.user?._id) {
     toast.error('Você não pode se remover da equipe.')
     return
   }
+  adminToRemove.value = admin
+}
 
-  if (!confirm(`Deseja realmente remover o acesso de ${admin.name}?`)) return
-
+async function confirmRemove() {
+  if (!adminToRemove.value) return
+  removing.value = true
   try {
-    await api.delete(`/team/${admin._id}`)
-    fetchTeam()
+    await api.delete(`/team/${adminToRemove.value._id}`)
     toast.success('Membro removido com sucesso.')
+    adminToRemove.value = null
+    fetchTeam()
   } catch (err) {
-    toast.error('Erro ao remover membro.')
+    toast.error(err.response?.data?.message || 'Erro ao remover membro.')
+  } finally {
+    removing.value = false
   }
 }
 
-const copyToClipboard = (text) => {
-  navigator.clipboard.writeText(text)
-  toast.info('Copiado para a área de transferência')
+// ----- Criação (POST /team) -----
+const createOpen = ref(false)
+const saving = ref(false)
+const form = ref({ name: '', email: '', phone: '', role: 'admin' })
+const errors = ref({ name: '', email: '', phone: '' })
+const lastAutoEmail = ref('')
+const createdAdmin = ref(null)
+
+function resetForm() {
+  form.value = { name: '', email: '', phone: '', role: 'admin' }
+  errors.value = { name: '', email: '', phone: '' }
+  lastAutoEmail.value = ''
 }
 
-const formatDate = (date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('pt-BR')
+function openCreate() {
+  resetForm()
+  createOpen.value = true
+}
+
+const sanitize = (str) => str.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '')
+
+// Sugere o e-mail corporativo enquanto o nome é digitado (mantém a regra anterior).
+watch(() => form.value.name, (name) => {
+  errors.value.name = ''
+  const parts = name.replace(/\s+/g, ' ').trim().toLowerCase().split(' ')
+  if (parts.length < 2) return
+  const suggested = `${sanitize(parts[0])}.${sanitize(parts[parts.length - 1])}@agendadoutor.com`
+  if (!form.value.email || form.value.email === lastAutoEmail.value) {
+    form.value.email = suggested
+    lastAutoEmail.value = suggested
+  }
+})
+watch(() => form.value.email, () => { errors.value.email = '' })
+watch(() => form.value.phone, () => { errors.value.phone = '' })
+
+function validate() {
+  const next = { name: '', email: '', phone: '' }
+  if (!form.value.name.trim()) next.name = 'Informe o nome completo.'
+  else if (form.value.name.trim().split(/\s+/).length < 2) next.name = 'Informe nome e sobrenome.'
+  if (!form.value.email.trim()) next.email = 'Informe o e-mail.'
+  else if (!/^\S+@\S+\.\S+$/.test(form.value.email)) next.email = 'E-mail em formato inválido.'
+  if (!form.value.phone.trim()) next.phone = 'Informe o telefone.'
+  errors.value = next
+  return !Object.values(next).some(Boolean)
+}
+
+async function submitCreate() {
+  if (!validate()) return
+  saving.value = true
+  try {
+    const { data } = await api.post('/team', form.value)
+    createdAdmin.value = data
+    createOpen.value = false
+    toast.success('Administrador convidado com sucesso!')
+    fetchTeam()
+  } catch (err) {
+    const message = err.response?.data?.message || 'Erro ao criar administrador.'
+    // Erros ligados a um campo aparecem no próprio input; o restante vira toast.
+    if (/e-?mail/i.test(message)) errors.value.email = message
+    else if (/telefone|phone/i.test(message)) errors.value.phone = message
+    else toast.error(message)
+  } finally {
+    saving.value = false
+  }
 }
 
 onMounted(fetchTeam)
 </script>
 
 <template>
-  <div class="admin-management-page">
-    <header class="page-header">
-      <div class="header-content">
-        <h1>Gestão de Equipe</h1>
-        <p>Gerencie os administradores e níveis de permissão da plataforma.</p>
-      </div>
-      <button 
-        v-if="authStore.user?.role === 'super admin'"
-        @click="isCreateModalOpen = true"
-        class="btn-primary main-action"
-      >
-        <Plus :size="20" />
-        <span>Novo Administrador</span>
-      </button>
-    </header>
+  <div class="team-view">
+    <AppPageHeader
+      title="Gestão de Equipe"
+      subtitle="Gerencie os administradores e níveis de permissão da plataforma."
+      :icon="ShieldCheck"
+    >
+      <template #actions>
+        <AppButton v-if="isSuperAdmin" variant="primary" @click="openCreate">
+          <Plus :size="18" /> Novo Administrador
+        </AppButton>
+      </template>
+    </AppPageHeader>
 
-    <div class="page-content-wrapper">
-      <!-- Stats Grid -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon blue">
-            <Users :size="24" />
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">Total de Membros</span>
-            <span class="stat-value">{{ admins.length }}</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon amber">
-            <Shield :size="24" />
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">Super Admins</span>
-            <span class="stat-value">{{ admins.filter(a => a.role === 'super admin').length }}</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon green">
-            <Mail :size="24" />
-          </div>
-          <div class="stat-info">
-            <span class="stat-label">Convites Pendentes</span>
-            <span class="stat-value">{{ admins.filter(a => a.firstLogin).length }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Data Table Section -->
-      <div class="table-container shadow-premium">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Membro</th>
-              <th>Papel</th>
-              <th>Contato</th>
-              <th>Status</th>
-              <th class="text-center">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="loading" v-for="i in 5" :key="i">
-              <td colspan="5" class="placeholder-row">
-                <div class="skeleton-bar"></div>
-              </td>
-            </tr>
-            <tr v-else v-for="admin in admins" :key="admin._id" class="row-hover">
-              <td>
-                <div class="member-cell">
-                  <div class="avatar-pseudo">{{ admin.name.charAt(0) }}</div>
-                  <div class="member-info">
-                    <span class="member-name">{{ admin.name }}</span>
-                    <span class="member-id">ID: {{ admin._id.slice(-6) }}</span>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <span class="role-badge" :class="admin.role.replace(' ', '-')">
-                  {{ admin.role }}
-                </span>
-              </td>
-              <td>
-                <div class="contact-details">
-                  <div class="contact-item">
-                    <Mail :size="14" /> {{ admin.email }}
-                  </div>
-                  <div class="contact-item">
-                    <Phone :size="14" /> {{ admin.phone }}
-                  </div>
-                </div>
-              </td>
-              <td>
-                <div class="status-box">
-                  <div class="status-badge" :class="{ 'pending': admin.firstLogin, 'active': !admin.firstLogin }">
-                    <span class="status-dot"></span>
-                    <span class="status-text">{{ admin.firstLogin ? 'Pendente' : 'Ativo' }}</span>
-                  </div>
-                  <span v-if="admin.firstLogin" class="expiry-hint">Expira {{ formatDate(admin.inviteExpiresAt) }}</span>
-                </div>
-              </td>
-              <td class="actions-cell">
-                <button 
-                  v-if="admin.role !== 'super admin' || (authStore.user?.role === 'super admin' && admin._id !== authStore.user?._id)"
-                  @click="handleDeleteAdmin(admin)"
-                  class="btn-delete"
-                  title="Remover acesso"
-                >
-                  <Trash2 :size="18" />
-                </button>
-              </td>
-            </tr>
-            <tr v-if="!loading && admins.length === 0">
-              <td colspan="5" class="empty-state">Nenhum administrador encontrado.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div class="team-stats">
+      <div class="stat"><span>Total de membros</span><strong>{{ stats.total }}</strong></div>
+      <div class="stat"><span>Super admins</span><strong>{{ stats.superAdmins }}</strong></div>
+      <div class="stat"><span>Convites pendentes</span><strong>{{ stats.pending }}</strong></div>
     </div>
 
-    <!-- Create Admin Drawer -->
-    <div v-if="isCreateModalOpen" class="drawer-overlay" @click.self="isCreateModalOpen = false">
-      <div class="drawer-panel">
-        <div class="drawer-header">
-          <div class="header-text">
-            <h2>Novo Membro</h2>
-            <p>Convidar um novo administrador para a plataforma.</p>
+    <AppDataTable
+      height="calc(100vh - 28rem)"
+      :columns="columns"
+      :rows="filteredAdmins"
+      :loading="loading"
+      :skeleton-rows="5"
+      :empty-icon="UserX"
+      :empty-title="search || roleFilter ? 'Nenhum membro encontrado' : 'Nenhum administrador encontrado'"
+      :empty-text="search || roleFilter ? 'Ajuste a busca ou o filtro de papel.' : 'Convide um novo membro para começar.'"
+    >
+      <template #filters>
+        <SearchInput v-model="search" placeholder="Buscar por nome, e-mail ou telefone..." />
+        <AppSelect
+          v-model="roleFilter"
+          :icon="Filter"
+          default-option="Todos os papéis"
+          :options="roleOptions"
+        />
+      </template>
+
+      <template #cell-member="{ row: admin }">
+        <div class="member-cell">
+          <AvatarPlaceholder :name="admin.name" size="40px" font-size="0.875rem" />
+          <div class="member-info">
+            <span class="member-name">{{ admin.name }}</span>
+            <span class="member-id">ID: {{ admin._id.slice(-6) }}</span>
           </div>
-          <button @click="isCreateModalOpen = false" class="btn-icon">
-            <X :size="24" />
-          </button>
         </div>
-        
-        <form @submit.prevent="handleCreateAdmin" class="drawer-form">
-          <div class="form-group">
-            <label>Nome Completo (Nome e Sobrenome)</label>
-            <input 
-              v-model="newAdmin.name" 
-              @input="handleNameInput"
-              type="text" 
-              required 
-              placeholder="Ex: Guilherme Silvestre"
-            >
+      </template>
+      <template #skeleton-member>
+        <div class="member-cell">
+          <SkeletonLoader width="40px" height="40px" radius="50%" />
+          <div class="member-info">
+            <SkeletonLoader width="140px" height="16px" /><SkeletonLoader width="80px" height="12px" />
           </div>
-          
-          <div class="form-group">
-            <label>E-mail Corporativo</label>
-            <input v-model="newAdmin.email" type="email" required placeholder="joao@clinica.ai">
-          </div>
-          
-          <div class="form-group">
-            <label>Telefone / WhatsApp</label>
-            <input v-model="newAdmin.phone" type="text" required placeholder="(00) 00000-0000">
-          </div>
+        </div>
+      </template>
 
-          <div class="form-group">
-            <label>Nível de Acesso (Papel)</label>
-            <div class="role-grid">
-              <label 
-                v-for="role in ['admin', 'suporte', 'super admin']" 
-                :key="role"
-                class="role-card"
-                :class="{ 'active': newAdmin.role === role }"
-              >
-                <input type="radio" v-model="newAdmin.role" :value="role">
-                <Shield :size="20" />
-                <div class="role-meta">
-                  <span class="role-title">{{ role }}</span>
-                  <span class="role-desc">
-                    {{ role === 'super admin' ? 'Acesso total' : role === 'admin' ? 'Gestão padrão' : 'Apenas suporte' }}
-                  </span>
-                </div>
-              </label>
-            </div>
-          </div>
+      <template #cell-role="{ row: admin }">
+        <span class="role-chip" :class="`role-${admin.role.replace(' ', '-')}`">{{ admin.role }}</span>
+      </template>
 
-          <div class="drawer-footer">
-            <div class="security-notice">
-              <AlertCircle :size="16" />
-              <span>Uma senha temporária será gerada para o primeiro acesso.</span>
-            </div>
-            <button type="submit" class="btn-primary full-width">
-              <span>Enviar Convite</span>
-              <Loader2 v-if="loading" class="animate-spin" :size="20" />
-            </button>
-          </div>
-        </form>
+      <template #cell-contact="{ row: admin }">
+        <div class="contact-cell">
+          <span class="contact-main">{{ admin.email }}</span>
+          <span class="contact-sub">{{ admin.phone }}</span>
+        </div>
+      </template>
+
+      <template #cell-status="{ row: admin }">
+        <div class="status-cell">
+          <StatusBadge
+            :variant="admin.firstLogin ? 'neutral' : 'success'"
+            :label="admin.firstLogin ? 'Pendente' : 'Ativo'"
+          />
+          <span v-if="admin.firstLogin && admin.inviteExpiresAt" class="contact-sub">
+            Expira {{ formatDate(admin.inviteExpiresAt) }}
+          </span>
+        </div>
+      </template>
+
+      <template #cell-actions="{ row: admin }">
+        <AppButton
+          v-if="canRemove(admin)"
+          variant="dangerous"
+          size="sm"
+          title="Remover acesso"
+          aria-label="Remover acesso"
+          @click="askRemove(admin)"
+        >
+          <Trash2 :size="16" />
+        </AppButton>
+      </template>
+    </AppDataTable>
+
+    <!-- Novo administrador -->
+    <AppModal :show="createOpen" width="450px" @close="createOpen = false">
+      <template #title>Novo Administrador</template>
+      <form id="team-create-form" class="team-form" novalidate @submit.prevent="submitCreate">
+        <p class="form-hint">Convide um novo administrador. Uma senha temporária será gerada para o primeiro acesso.</p>
+        <FormInput v-model="form.name" label="Nome completo" placeholder="Ex: Maria Souza" required :error="errors.name" />
+        <FormInput v-model="form.email" type="email" label="E-mail corporativo" placeholder="nome@agendadoutor.com" required :error="errors.email" />
+        <FormInput v-model="form.phone" phone-mask label="Telefone / WhatsApp" placeholder="(00) 00000-0000" required :error="errors.phone" />
+        <StyledSelect v-model="form.role" label="Nível de acesso" :options="roleOptions" />
+        <p class="form-hint">{{ roleDescriptions[form.role] }}</p>
+      </form>
+      <template #footer>
+        <AppButton @click="createOpen = false">Cancelar</AppButton>
+        <AppButton variant="primary" type="submit" form="team-create-form" :loading="saving">Enviar convite</AppButton>
+      </template>
+    </AppModal>
+
+    <!-- Senha temporária -->
+    <AppModal :show="!!createdAdmin" width="450px" @close="createdAdmin = null">
+      <template #title>Administrador criado</template>
+      <div v-if="createdAdmin" class="password-box">
+        <p class="form-hint">Copie a senha temporária e envie para <strong>{{ createdAdmin.name || 'o novo membro' }}</strong>. Ela não será exibida novamente.</p>
+        <div class="password-row">
+          <code>{{ createdAdmin.tempPassword }}</code>
+          <AppButton size="sm" title="Copiar senha" @click="copyPassword(createdAdmin.tempPassword)">
+            <Check v-if="copied" :size="16" /><Copy v-else :size="16" />
+          </AppButton>
+        </div>
       </div>
-    </div>
+      <template #footer>
+        <AppButton variant="primary" @click="createdAdmin = null">Entendido</AppButton>
+      </template>
+    </AppModal>
 
-    <!-- Password Disclosure Modal -->
-    <div v-if="showPasswordModal" class="modal-overlay dark">
-      <div class="disclosure-card">
-        <div class="success-icon">
-          <Check :size="40" stroke-width="3" />
-        </div>
-        <h2>Administrador Criado!</h2>
-        <p>Copie a senha temporária abaixo e envie para o novo membro.</p>
-
-        <div class="password-box">
-          <span class="label">Senha Temporária</span>
-          <div class="pwd-content">
-            <code>{{ generatedAdmin?.tempPassword }}</code>
-            <button @click="copyToClipboard(generatedAdmin?.tempPassword)" class="btn-icon">
-              <Copy :size="18" />
-            </button>
-          </div>
-        </div>
-
-        <button @click="showPasswordModal = false" class="btn-action">Entendido</button>
-      </div>
-    </div>
+    <!-- Confirmar remoção -->
+    <AppModal :show="!!adminToRemove" width="420px" @close="adminToRemove = null">
+      <template #title>Remover acesso</template>
+      <p v-if="adminToRemove" class="form-hint">
+        Deseja realmente remover o acesso de <strong>{{ adminToRemove.name }}</strong>? Essa pessoa deixará de entrar no painel.
+      </p>
+      <template #footer>
+        <AppButton @click="adminToRemove = null">Cancelar</AppButton>
+        <AppButton variant="dangerous" :loading="removing" @click="confirmRemove">Remover</AppButton>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <style scoped>
-.admin-management-page {
-  padding: 0;
-  width: 100%;
-  min-height: calc(100vh - 64px);
-  background: #f8fafc;
-  display: flex;
-  flex-direction: column;
-}
+.team-view { width: 100%; }
 
-.page-content-wrapper {
-  padding: 2.5rem;
-  flex: 1;
-  width: 100%;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: white;
-  padding: 2rem 3rem;
-  border-bottom: 2px solid #f1f5f9;
-}
-
-.page-header h1 {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 2.75rem;
-  color: #0f172a;
-  margin-bottom: 0.25rem;
-  letter-spacing: -0.06em;
-  line-height: 1;
-}
-
-.page-header p {
-  font-size: 1rem;
-  color: #64748b;
-  font-weight: 500;
-}
-
-.btn-primary {
-  background: var(--azul-principal);
-  color: white;
-  padding: 0.625rem 1.25rem;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2);
-}
-
-.btn-primary:hover {
-  background: var(--azul-escuro);
-  transform: translateY(-1px);
-}
-
-/* Stats */
-.stats-grid {
+.team-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
-
-.stat-card {
-  background: white;
-  padding: 1.5rem 1.75rem;
-  border-radius: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  border: 1px solid #f1f5f9;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.05);
-  border-color: #e2e8f0;
-}
-
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-icon.blue { background: #eff6ff; color: #3b82f6; }
-.stat-icon.amber { background: #fffbeb; color: #f59e0b; }
-.stat-icon.green { background: #f0fdf4; color: #10b981; }
-
-.stat-label {
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #64748b;
-  margin-bottom: 0.25rem;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-/* Table */
-.table-container {
-  background: white;
-  border-radius: 1rem;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-}
-
-.data-table th {
-  background: #f8fafc;
-  padding: 1rem 1.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #64748b;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.data-table td {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
-  vertical-align: middle;
-}
-
-.member-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.member-name {
-  font-weight: 600;
-  color: #1e293b;
-  font-size: 0.9375rem;
-}
-
-.member-id {
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-
-.role-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 2rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-.role-badge {
-  display: inline-flex;
-  padding: 0.35rem 0.85rem;
-  border-radius: 2rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.role-badge.super-admin { 
-  background: #e0f2fe; 
-  color: #0369a1; 
-  border: 1px solid #bae6fd; 
-}
-.role-badge.admin { 
-  background: #f1f5f9; 
-  color: #475569; 
-  border: 1px solid #e2e8f0; 
-}
-.role-badge.suporte { 
-  background: #f5f3ff; 
-  color: #6d28d9; 
-  border: 1px solid #ddd6fe; 
-}
-
-.shadow-premium {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
-  border: 1px solid #f1f5f9;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.data-table th {
-  padding: 1.25rem 1.5rem;
-  text-align: left;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  border-bottom: 2px solid #f8fafc;
-}
-
-.data-table td {
-  padding: 1.5rem;
-  vertical-align: middle;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.data-table tr.row-hover:hover {
-  background: #fcfdfe;
-}
-
-.member-cell {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.avatar-pseudo {
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  color: #475569;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 1.125rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 1rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-.status-badge.active {
-  background: #f0fdf4;
-  color: #166534;
-}
-
-.status-badge.pending {
-  background: #fffbeb;
-  color: #92400e;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.active .status-dot { background: #22c55e; }
-.pending .status-dot { background: #f59e0b; }
-
-.status-box {
-  display: flex;
-  flex-direction: column;
-}
-
-.expiry-hint {
-  font-size: 0.7rem;
-  color: #94a3b8;
-  margin-top: 0.375rem;
-  font-weight: 500;
-  padding-left: 0.75rem;
-}
-
-.contact-details {
+.stat {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-}
-
-.contact-item {
-  font-size: 0.875rem;
-  color: #475569;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
-}
-
-.contact-item svg {
-  color: #94a3b8;
-}
-
-.main-action {
-  padding: 1rem 1.75rem;
-  font-weight: 700;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-}
-
-/* Drawer */
-.drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(8px);
-  z-index: 1000;
-  display: flex;
-  justify-content: flex-end;
-  animation: fadeIn 0.3s ease;
-}
-
-.drawer-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  max-width: 480px;
-  background: white;
-  box-shadow: -10px 0 40px rgba(0,0,0,0.08);
-  display: flex;
-  flex-direction: column;
-  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 101;
-}
-
-@keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.drawer-header {
-  padding: 2rem;
-  border-bottom: 1px solid #f1f5f9;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  background: #fafbfc;
-}
-
-.drawer-header h2 {
-  font-size: 1.5rem;
-  color: #0f172a;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.drawer-header p {
-  font-size: 0.875rem;
-  color: #64748b;
-  margin-top: 0.25rem;
-}
-
-.drawer-form {
-  padding: 2rem;
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.form-group input {
-  padding: 0.875rem 1rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
-  border: 1.5px solid #e2e8f0;
-  font-size: 1rem;
-  transition: all 0.2s ease;
-  background: #f8fafc;
 }
+.stat span { color: #64748b; font-size: 0.8rem; }
+.stat strong { color: #111827; font-size: 1.5rem; }
 
-.form-group input:focus {
-  background: white;
-  border-color: var(--azul-principal);
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-  outline: none;
-}
+.member-cell { display: flex; align-items: center; gap: 0.75rem; }
+.member-info, .contact-cell, .status-cell { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.status-cell { align-items: flex-start; }
+.member-name, .contact-main { color: #111827; font-weight: 500; }
+.member-id, .contact-sub { color: #6b7280; font-size: 0.8rem; }
+.contact-main { overflow: hidden; text-overflow: ellipsis; }
 
-.role-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.role-option {
-  flex: 1;
-  padding: 1rem;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5125rem;
-  background: #fcfcfc;
-}
-
-.role-option:hover {
-  border-color: #cbd5e1;
-  background: white;
-}
-
-.role-option.active {
-  border-color: var(--azul-principal);
-  background: #eff6ff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-}
-
-.role-title {
-  font-weight: 700;
-  font-size: 0.9375rem;
+.role-chip {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 600;
   text-transform: capitalize;
-  color: #1e293b;
+  background: #f1f5f9;
+  color: #475569;
 }
+.role-chip.role-super-admin { background: #fef3c7; color: #a16207; }
+.role-chip.role-admin { background: #e0f2fe; color: #0369a1; }
+.role-chip.role-suporte { background: #f0fdf4; color: #16a34a; }
 
-.role-desc {
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-.drawer-footer {
-  padding: 2rem;
-  border-top: 1px solid #f1f5f9;
-  background: #f8fafc;
-}
-
-.security-notice {
+.team-form { display: flex; flex-direction: column; }
+.form-hint { margin: 0 0 1rem; color: #6b7280; font-size: 0.875rem; line-height: 1.5; }
+.password-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: #64748b;
-  font-size: 0.75rem;
-  margin-bottom: 1.25rem;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
 }
-
-.full-width {
-  width: 100%;
-  justify-content: center;
-  padding: 1rem;
-  font-size: 1rem;
-}
-
-/* Disclosure */
-.disclosure-card {
-  background: white;
-  width: 100%;
-  max-width: 400px;
-  padding: 3rem 2rem;
-  border-radius: 2rem;
-  text-align: center;
-}
-
-.success-icon {
-  width: 80px;
-  height: 80px;
-  background: #f0fdf4;
-  color: #10b981;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
-}
-
-.disclosure-card h2 {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.disclosure-card p {
-  color: #64748b;
-  font-size: 0.875rem;
-  margin-bottom: 2rem;
-}
-
-.password-box {
-  background: #f8fafc;
-  padding: 1.5rem;
-  border-radius: 1.25rem;
-  border: 2px dashed #e2e8f0;
-  margin-bottom: 2rem;
-}
-
-.password-box .label {
-  display: block;
-  font-size: 0.625rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: #94a3b8;
-  letter-spacing: 0.1em;
-  margin-bottom: 0.75rem;
-}
-
-.pwd-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-}
-
-.pwd-content code {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: var(--azul-principal);
-  letter-spacing: -0.05em;
-}
-
-.btn-action {
-  width: 100%;
-  background: #0f172a;
-  color: white;
-  padding: 1rem;
-  border-radius: 1rem;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-action:hover {
-  background: #1e293b;
-  transform: translateY(-2px);
-}
-
-/* Animations */
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* Tooltips e utilitários */
-.capitalize { text-transform: capitalize; }
-.text-center { text-align: center; }
+.password-row code { font-size: 1.05rem; font-weight: 600; color: #111827; word-break: break-all; }
 
 @media (max-width: 768px) {
-  .drawer-panel { max-width: 100%; }
-  .stats-grid { grid-template-columns: 1fr; }
-  .admin-management-page { padding: 1rem; }
-}
-
-.placeholder-row {
-  height: 60px;
-}
-
-.skeleton-bar {
-  height: 20px;
-  background: #f1f5f9;
-  border-radius: 4px;
-  width: 80%;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
+  .team-stats { grid-template-columns: 1fr; }
+  .member-cell { justify-content: flex-end; text-align: left; }
+  .contact-cell, .status-cell { align-items: flex-end; text-align: right; }
 }
 </style>

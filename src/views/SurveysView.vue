@@ -2,10 +2,7 @@
   <div class="surveys-view">
     <!-- Header Area -->
     <div class="header-area">
-      <div class="header-titles">
-        <h1 class="page-title">Avaliações do Sistema</h1>
-        <p class="page-subtitle">Veja o que os usuários estão achando da plataforma.</p>
-      </div>
+      <AppPageHeader title="Avaliações do Sistema" subtitle="Veja o que os usuários estão achando da plataforma." :icon="PageIcon" />
 
       <!-- Stats Cards -->
       <div class="stats-area">
@@ -22,7 +19,7 @@
     </div>
 
     <!-- Tabela principal -->
-    <div class="table-container">
+    <div class="surveys-list">
       <div v-if="loading" class="loading-state">
         <div class="spinner">
           <i class="fi fi-rr-spinner-alt"></i>
@@ -38,51 +35,32 @@
         <p>Ainda não recebemos avaliações. Compartilhe o link do formulário com seus usuários!</p>
       </div>
 
-      <div v-else class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="col-id">#</th>
-              <th>Usuário</th>
-              <th>Cargo</th>
-              <th>NPS</th>
-              <th class="text-right">Data</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr 
-              v-for="(survey, index) in surveys" 
-              :key="survey._id"
-               @click="openSurveyDetails(survey)"
-              class="data-row"
-            >
-              <td class="col-id">{{ index + 1 }}</td>
-              <td>
-                <div class="user-cell">
-                  <div class="avatar">
-                    {{ getInitials(survey.name) }}
-                  </div>
-                  <span class="user-name">{{ survey.name }}</span>
-                </div>
-              </td>
-              <td>
-                <span class="badge" :class="getRoleBadgeClass(survey.role)">
-                  {{ survey.role }}
-                </span>
-              </td>
-              <td>
-                <div class="nps-cell">
-                  <div class="nps-dot" :class="getNpsDotClass(survey.npsScore)"></div>
-                  <span class="nps-score">{{ survey.npsScore }}/10</span>
-                </div>
-              </td>
-              <td class="text-right text-muted">
-                {{ formatDate(survey.createdAt) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <AppDataTable
+        v-else
+        height="calc(100vh - 26rem)"
+        :columns="columns"
+        :rows="surveys"
+        clickable
+        @row-click="openSurveyDetails"
+      >
+        <template #cell-index="{ index }">{{ index + 1 }}</template>
+        <template #cell-name="{ row: survey }">
+          <div class="user-cell">
+            <div class="avatar">{{ getInitials(survey.name) }}</div>
+            <span class="user-name">{{ survey.name }}</span>
+          </div>
+        </template>
+        <template #cell-role="{ row: survey }">
+          <span class="badge" :class="getRoleBadgeClass(survey.role)">{{ survey.role }}</span>
+        </template>
+        <template #cell-nps="{ row: survey }">
+          <div class="nps-cell">
+            <div class="nps-dot" :class="getNpsDotClass(survey.npsScore)"></div>
+            <span class="nps-score">{{ survey.npsScore }}/10</span>
+          </div>
+        </template>
+        <template #cell-createdAt="{ row: survey }"><span class="text-muted">{{ formatDate(survey.createdAt) }}</span></template>
+      </AppDataTable>
     </div>
 
     <!-- Overlay and Sidebar Details panel -->
@@ -173,8 +151,19 @@
 </template>
 
 <script setup>
+import AppPageHeader from '@/components/global/AppPageHeader.vue'
+import { Star as PageIcon } from 'lucide-vue-next'
 import { ref, onMounted } from 'vue'
 import api from '../utils/api'
+import AppDataTable from '../components/global/AppDataTable.vue'
+
+const columns = [
+  { key: 'index', label: '#', width: '50px' },
+  { key: 'name', label: 'Usuário' },
+  { key: 'role', label: 'Cargo' },
+  { key: 'nps', label: 'NPS', width: '100px' },
+  { key: 'createdAt', label: 'Data', width: '160px', align: 'right' },
+]
 
 const surveys = ref([])
 const totalSurveys = ref(0)
@@ -319,14 +308,13 @@ const getNpsTextClass = (score) => {
   margin: 0;
 }
 
-/* Table Container */
-.table-container {
-  background-color: #ffffff;
-  border-radius: 0.75rem;
-  border: 1px solid #f3f4f6;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+.surveys-list {
   position: relative;
+}
+.loading-state, .empty-state {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
 }
 
 .loading-state, .empty-state {
@@ -374,33 +362,6 @@ const getNpsTextClass = (score) => {
   color: #6b7280;
   max-width: 24rem;
   margin: 0;
-}
-
-/* Data Table */
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.data-table {
-  width: 100%;
-  text-align: left;
-  border-collapse: collapse;
-}
-
-.data-table th {
-  padding: 1rem 1.5rem;
-  background-color: rgba(249, 250, 251, 0.5);
-  border-bottom: 1px solid #f3f4f6;
-  text-transform: uppercase;
-  font-size: 0.625rem;
-  font-weight: 700;
-  color: #6b7280;
-  letter-spacing: 0.05em;
-}
-
-.data-table td {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #f3f4f6;
 }
 
 .data-row {

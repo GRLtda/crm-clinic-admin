@@ -67,56 +67,33 @@
           <SearchInput v-model="search" placeholder="Buscar por nome, e-mail ou telefone..." />
         </div>
 
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Contato</th>
-                <th>Cadastro</th>
-                <th>Clínica</th>
-                <th>Assinatura</th>
-              </tr>
-            </thead>
-            <tbody v-if="!loadingRows">
-              <tr v-for="row in rows" :key="row._id">
-                <td data-label="Nome"><strong class="name">{{ row.name }}</strong></td>
-                <td data-label="Contato">
-                  <div class="stack"><span>{{ row.email }}</span><small>{{ row.phone }}</small></div>
-                </td>
-                <td data-label="Cadastro">{{ formatDateTime(row.registeredAt) }}</td>
-                <td data-label="Clínica">
-                  <RouterLink v-if="row.clinic" :to="{ name: 'clinic-detail', params: { id: row.clinic._id } }" class="clinic-link">
-                    {{ row.clinic.name }} <ArrowUpRight :size="14" aria-hidden="true" />
-                  </RouterLink>
-                  <span v-else class="muted">Não concluiu o onboarding</span>
-                </td>
-                <td data-label="Assinatura">
-                  <span class="status-chip" :class="subscriptionClass(row)">{{ subscriptionLabel(row) }}</span>
-                </td>
-              </tr>
-            </tbody>
-            <tbody v-else>
-              <tr v-for="n in 4" :key="n"><td v-for="col in 5" :key="col"><SkeletonLoader width="80%" height="16px" /></td></tr>
-            </tbody>
-          </table>
-          <AppEmptyState
-            v-if="!loadingRows && rows.length === 0"
-            :icon="UserX"
-            :title="search ? 'Nenhum cadastro encontrado' : 'Ainda sem cadastros'"
-            :text="search ? 'Tente outro nome, e-mail ou telefone.' : 'Os cadastros feitos pelo link aparecem aqui.'"
-          />
-        </div>
-
-        <AppPagination
-          v-if="!loadingRows && rowsPagination.pages > 1"
-          :current-page="rowsPagination.page"
-          :total-pages="rowsPagination.pages"
-          :total-items="rowsPagination.total"
-          :items-on-page="rows.length"
-          label="cadastros"
-          @page-changed="fetchRows"
-        />
+        <AppDataTable
+          height="calc(100vh - 38rem)"
+          :columns="columns"
+          :rows="rows"
+          :loading="loadingRows"
+          :skeleton-rows="4"
+          :pagination="rowsPagination"
+          :empty-icon="UserX"
+          :empty-title="search ? 'Nenhum cadastro encontrado' : 'Ainda sem cadastros'"
+          :empty-text="search ? 'Tente outro nome, e-mail ou telefone.' : 'Os cadastros feitos pelo link aparecem aqui.'"
+          @page-change="fetchRows"
+        >
+          <template #cell-name="{ row }"><strong class="name">{{ row.name }}</strong></template>
+          <template #cell-contact="{ row }">
+            <div class="stack"><span>{{ row.email }}</span><small>{{ row.phone }}</small></div>
+          </template>
+          <template #cell-registeredAt="{ row }">{{ formatDateTime(row.registeredAt) }}</template>
+          <template #cell-clinic="{ row }">
+            <RouterLink v-if="row.clinic" :to="{ name: 'clinic-detail', params: { id: row.clinic._id } }" class="clinic-link">
+              {{ row.clinic.name }} <ArrowUpRight :size="14" aria-hidden="true" />
+            </RouterLink>
+            <span v-else class="muted">Não concluiu o onboarding</span>
+          </template>
+          <template #cell-subscription="{ row }">
+            <span class="status-chip" :class="subscriptionClass(row)">{{ subscriptionLabel(row) }}</span>
+          </template>
+        </AppDataTable>
       </section>
 
       <CampaignFormModal :show="formOpen" :campaign="campaign" @close="formOpen = false" @saved="onSaved" />
@@ -131,9 +108,7 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, ArrowUpRight, Link2, Loader2, Megaphone, Pencil, Trash2, UserX } from 'lucide-vue-next'
 import StatusBadge from '../components/global/StatusBadge.vue'
 import SearchInput from '../components/global/SearchInput.vue'
-import SkeletonLoader from '../components/global/SkeletonLoader.vue'
-import AppPagination from '../components/global/AppPagination.vue'
-import AppEmptyState from '../components/global/AppEmptyState.vue'
+import AppDataTable from '../components/global/AppDataTable.vue'
 import CampaignFormModal from '../components/pages/signup-campaigns/CampaignFormModal.vue'
 import DeleteCampaignModal from '../components/pages/signup-campaigns/DeleteCampaignModal.vue'
 import { useClipboard } from '../composables/useClipboard'
@@ -147,6 +122,13 @@ import {
   formatDateTime,
 } from '../utils/signupCampaigns.js'
 
+const columns = [
+  { key: 'name', label: 'Nome' },
+  { key: 'contact', label: 'Contato' },
+  { key: 'registeredAt', label: 'Cadastro', width: '150px' },
+  { key: 'clinic', label: 'Clínica' },
+  { key: 'subscription', label: 'Assinatura', width: '140px' },
+]
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -249,11 +231,6 @@ onMounted(async () => {
 .stat-card.highlight { border-color: #bbf7d0; background: #f0fdf4; }
 .section-header { align-items: center; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; margin-bottom: 1rem; }
 .section-header h2 { color: #111827; font-size: 1.2rem; margin: 0; }
-.table-container { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.75rem; overflow: hidden; margin-bottom: 1.5rem; }
-.data-table { width: 100%; border-collapse: collapse; text-align: left; }
-.data-table th, .data-table td { padding: 0.9rem 1.25rem; border-bottom: 1px solid #e5e7eb; font-size: 0.875rem; color: #374151; vertical-align: middle; }
-.data-table tr:last-child td { border-bottom: none; }
-.data-table th { background: #f9fafb; color: #6b7280; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
 .name { color: #0f172a; }
 .stack { display: flex; flex-direction: column; gap: 2px; }
 .stack small, .muted { color: #6b7280; font-size: 0.8rem; }
@@ -267,11 +244,6 @@ onMounted(async () => {
 @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 768px) {
   .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .data-table thead { display: none; }
-  .table-container { border: none; background: transparent; }
-  .data-table tr { display: block; background: #fff; border: 1px solid #e5e7eb; border-radius: 0.75rem; margin-bottom: 1rem; }
-  .data-table td { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.7rem 1rem; text-align: right; }
-  .data-table td::before { content: attr(data-label); color: #6b7280; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; flex-shrink: 0; }
   .stack { align-items: flex-end; }
 }
 @media (max-width: 420px) { .stats-grid { grid-template-columns: 1fr; } }

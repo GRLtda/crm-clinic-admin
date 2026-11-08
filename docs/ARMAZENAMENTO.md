@@ -6,6 +6,8 @@ identidade visual e fotos de perfil. A tabela pagina 20 clínicas por vez,
 ordenadas por nome. A busca literal pelo início do nome tem debounce de 350 ms
 e reinicia a página. O total geral permanece global durante a busca.
 
+Visual: cabeçalho padrão da página, três cartões de totais com ícone (total, consome cota, isento), uma linha de informações (atualização, 1 GB = 1024³, reservas e aviso de inventário) e a [tabela padrão](TABELA_PADRAO.md) com a busca no topo, tamanhos alinhados à direita e o inventário como selo (Verificado, Em atualização, Bloqueado).
+
 **Ver arquivos** abre `/clinics/:id?tab=storage`. A aba **Armazenamento** do
 detalhe só carrega quando aberta e usa o mesmo `StoragePanel`. Mostra totais
 físicos, cota da clínica, distribuição por categoria, bloqueio/inventário em
@@ -43,7 +45,7 @@ O `AppEmptyState` adotado do CRM e o SVG local `storage-empty.svg` seguem as
 Primeira carga usa skeleton. Vazio só aparece após sucesso; erros mostram a
 causa e botão de nova tentativa. Atualização falha mantém dados anteriores.
 Troca de clínica invalida respostas antigas e limpa dados sensíveis anteriores.
-Em celular, cards/filtros empilham e a tabela rola horizontalmente no próprio
+Em celular, cards/filtros empilham e as linhas da tabela padrão ([AppDataTable](TABELA_PADRAO.md)) viram cartões no próprio
 contêiner. A barra respeita redução de movimento. Não há consultas periódicas.
 
 ## Testes e revisão

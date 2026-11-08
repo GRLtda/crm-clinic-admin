@@ -1,8 +1,8 @@
 <template>
   <div class="dashboard-view">
-    <div class="filter-bar">
-      <h2 class="page-title">Resumo Geral</h2>
-      <div class="period-filters">
+    <AppPageHeader title="Resumo Geral" subtitle="Indicadores gerais da plataforma no período selecionado." :icon="PageIcon">
+      <template #actions>
+        <div class="period-filters">
         <button
           v-for="period in periods"
           :key="period.value"
@@ -16,7 +16,8 @@
           {{ period.label }}
         </button>
       </div>
-    </div>
+      </template>
+    </AppPageHeader>
 
     <div class="kpi-grid">
       <KPICard
@@ -70,6 +71,8 @@
 </template>
 
 <script setup>
+import AppPageHeader from '@/components/global/AppPageHeader.vue'
+import { LayoutDashboard as PageIcon } from 'lucide-vue-next'
 import { onMounted, computed } from 'vue'
 import { useDashboardStore } from '../stores/dashboard.js' // (Ajuste o caminho se necessário)
 import KPICard from '../components/layout/KPICard.vue'
