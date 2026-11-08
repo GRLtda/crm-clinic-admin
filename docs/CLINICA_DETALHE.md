@@ -38,3 +38,8 @@ desativado somente quando a taxa já foi paga e não está dispensada.
 ## Origem do cadastro
 
 Clínicas criadas pela campanha da feira mostram a tag **Origem: <nome da campanha>** no cabeçalho, ao lado do plano e do status. Ao passar o mouse, a tag mostra a data do cadastro (`acquisition.registeredAt`). Clínicas sem campanha não exibem a tag. Filtros: [Listas administrativas](LISTAS_ADMINISTRATIVAS.md#origem-do-cadastro-campanha-da-feira).
+
+
+## Aba Lia
+
+A navegação lateral da clínica tem a aba **Lia** (admin e super admin), com o resumo de uso da Lia daquela clínica. Detalhes em [Lia no admin](LIA_ADMIN.md#aba-lia-no-detalhe-da-clínica). `?tab=lia` abre direto nela, como `?tab=storage` no armazenamento.

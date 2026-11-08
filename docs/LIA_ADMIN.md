@@ -16,6 +16,10 @@ Categoria **Lia** do menu, visível para `admin` e `super admin`, com três pág
 - Indicadores: taxa de erro (erros ÷ tentativas), total de erros, ações com confirmação que falharam e pedidos fora do escopo.
 - Erros por dia, ações por estado (concluídas, falharam, pendentes, canceladas), erros mais frequentes, ferramentas com falha e lista paginada de erros recentes com clínica, tipo, etapa e detalhe técnico. Códigos têm rótulo legível em `src/utils/liaFormat.js`.
 
+## Aba Lia no detalhe da clínica
+
+Em `/clinics/:id` (e `?tab=lia`), a aba **Lia** (`ClinicLiaPanel.vue`, só `admin` e `super admin`) resume o uso daquela clínica no período escolhido (7, 30 ou 90 dias): tokens e custo estimado, respostas, conversas novas, latência, taxa de erro e de falha de ações; gráfico de tokens por dia; **Quem usa** (usuários com tokens, custo e último uso); ferramentas mais usadas; ações por estado; erros recentes e feedbacks (total e novos, com atalho para a fila). Sem uso no período, mostra um estado vazio. Dados: `GET /admin/lia-usage/clinic/:clinicId?days=` ([API](../../api-clinic/docs/LIA.md#observabilidade-administrativa-uso-tokens-e-erros)).
+
 ## Feedbacks (`/lia/feedback`)
 
 Fila de avaliações e denúncias dos usuários. Veja [Qualidade da Lia](lia-feedback.md).

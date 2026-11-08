@@ -13,6 +13,7 @@
         <span>{{ Math.abs(trend) }}%</span>
       </div>
     </div>
+    <span v-if="hint" class="kpi-hint" :class="`tone-${tone}`">{{ hint }}</span>
   </div>
 </template>
 
@@ -26,7 +27,10 @@ defineProps({
   trend: {
     type: Number,
     default: 0
-  }
+  },
+  // Linha pequena abaixo do valor (ex.: "2 vencem em 7 dias"); `tone` colore a dica.
+  hint: { type: String, default: '' },
+  tone: { type: String, default: 'neutral' } // neutral | warning | danger
 })
 </script>
 
@@ -66,9 +70,9 @@ defineProps({
 }
 
 .kpi-title {
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 500;
-  color: var(--cinza-texto);
+  color: #475569;
   font-family: var(--fonte-principal);
 }
 
@@ -79,13 +83,18 @@ defineProps({
 }
 
 .kpi-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--preto);
-  font-family: var(--fonte-titulo);
-  line-height: 1;
-  letter-spacing: -0.02em;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #111827;
+  font-family: var(--fonte-principal);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
+
+.kpi-hint { font-size: 0.85rem; font-weight: 500; color: #64748b; margin-top: -0.35rem; }
+.kpi-hint.tone-warning { color: #a16207; }
+.kpi-hint.tone-danger { color: #b91c1c; }
 
 .kpi-trend {
   display: flex;

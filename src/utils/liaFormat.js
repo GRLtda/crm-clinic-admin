@@ -62,11 +62,11 @@ export const TOOL_LABELS = {
 export const toolLabel = (name) => TOOL_LABELS[name] || name
 
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+const usd = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' })
 // Valores pequenos (centavos de centavo) precisam de mais casas para não aparecer R$ 0,00.
 const smart = (formatter, symbol, value) => {
   const n = Number(value) || 0
-  if (n > 0 && n < 0.01) return `${symbol} ${n.toLocaleString(symbol === 'R$' ? 'pt-BR' : 'en-US', { minimumFractionDigits: 3, maximumFractionDigits: 4 })}`
+  if (n > 0 && n < 0.01) return `${symbol} ${n.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 4 })}`
   return formatter.format(n)
 }
 export const formatBrl = (value) => smart(brl, 'R$', value)

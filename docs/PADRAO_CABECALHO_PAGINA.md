@@ -23,7 +23,7 @@
 
 | Página | Ícone |
 | --- | --- |
-| Resumo Geral (`/`) | `LayoutDashboard` |
+| Resumo Geral (`/`, ver [Dashboard](DASHBOARD.md)) | `LayoutDashboard` |
 | Usuários (`/users`) | `Users` |
 | Convites (`/invitations`) | `MailPlus` |
 | Clínicas (`/clinics`) | `Building2` |
