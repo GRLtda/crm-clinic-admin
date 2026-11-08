@@ -2,16 +2,17 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useLayoutStore } from '@/stores/layout' // Store de layout do Admin
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import {
   LayoutDashboard,
   Users,
   UserPlus,
+  UserCog,
   Building,
+  Building2,
   MessageSquare,
   ChevronDown,
-  Briefcase,
   CreditCard,
   Shield,
   Star,
@@ -19,7 +20,12 @@ import {
   ScrollText,
   BadgeDollarSign,
   HardDrive,
-  Megaphone
+  Megaphone,
+  Send,
+  Sparkles,
+  ShieldAlert,
+  MessageSquareHeart,
+  ClipboardList
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -35,6 +41,7 @@ const emit = defineEmits(['close', 'toggle-collapse'])
 const authStore = useAuthStore()
 const layoutStore = useLayoutStore() // Para controlar mobile toggle
 const route = useRoute()
+const router = useRouter()
 
 // Estado local para dropdowns
 const isUserDropdownOpen = ref(false)
@@ -51,8 +58,12 @@ const indicatorStyle = ref({
   opacity: 0
 })
 
-const toggleExpand = (key) => {
-  if (props.isCollapsed) return
+// Com a sidebar recolhida não há submenu: clicar no grupo abre a primeira página dele.
+const toggleExpand = (key, children = []) => {
+  if (props.isCollapsed) {
+    if (children[0]?.to) router.push(children[0].to)
+    return
+  }
   const index = expandedItems.value.indexOf(key)
   if (index === -1) {
     expandedItems.value.push(key)
@@ -81,7 +92,7 @@ const updateIndicator = () => {
       const linkRect = activeLink.getBoundingClientRect()
       
       indicatorStyle.value = {
-        top: `${linkRect.top - navRect.top}px`,
+        top: `${linkRect.top - navRect.top + sidebarNavRef.value.scrollTop}px`,
         height: `${linkRect.height}px`,
         opacity: 1
       }
@@ -99,56 +110,88 @@ watch(() => route.path, () => {
   updateIndicator()
 }, { immediate: true })
 
+// O indicador acompanha a animação de abrir/fechar grupos e o recolhimento da sidebar.
+let indicatorTimer = null
+const syncIndicator = () => {
+  updateIndicator()
+  requestAnimationFrame(updateIndicator)
+  clearTimeout(indicatorTimer)
+  indicatorTimer = setTimeout(updateIndicator, 330)
+}
+watch(() => expandedItems.value.join('|'), syncIndicator)
+watch(() => props.isCollapsed, syncIndicator)
+
 // Atualizar ao montar
 onMounted(() => {
   setTimeout(updateIndicator, 100)
 })
 
-// Mapeamento das Rotas do Admin no novo layout
+// Menu do admin. Segue o padrão da sidebar oficial: itens com ▾ expandem ao clicar e agrupam
+// páginas parecidas. Categoria (título) nova só para algo muito importante e diferente.
+// Ver docs/SIDEBAR.md.
 const sidebarSections = computed(() => {
-  // Seção Principal
-  const principalSection = {
-    title: null,
-    links: [
-      { icon: LayoutDashboard, text: 'Dashboard', to: '/' },
-    ]
+  const role = authStore.user?.role
+  const isAdmin = ['super admin', 'admin'].includes(role)
+  const isSuper = role === 'super admin'
+
+  const clinicChildren = [
+    { icon: Building2, text: 'Todas as clínicas', to: '/clinics' },
+    { icon: CreditCard, text: 'Assinaturas', to: '/subscriptions' },
+    ...(isAdmin ? [{ icon: HardDrive, text: 'Armazenamento', to: '/storage' }] : []),
+  ]
+  const userChildren = [
+    { icon: Users, text: 'Usuários', to: '/users' },
+    { icon: UserPlus, text: 'Convites', to: '/invitations' },
+  ]
+  const communicationChildren = [
+    { icon: Bell, text: 'Notificações', to: '/notifications' },
+    { icon: MessageSquare, text: 'WhatsApp', to: '/whatsapp' },
+    { icon: Star, text: 'Avaliações', to: '/surveys' },
+  ]
+  const auditChildren = [
+    ...(isAdmin ? [{ icon: ScrollText, text: 'Sistema', to: '/audit/system' }] : []),
+    ...(isSuper ? [{ icon: BadgeDollarSign, text: 'Financeira', to: '/audit/financial' }] : []),
+  ]
+
+  const sections = [
+    { title: null, links: [{ icon: LayoutDashboard, text: 'Dashboard', to: '/' }] },
+    {
+      title: 'Gestão',
+      links: [
+        { icon: Building, text: 'Clínicas', key: 'clinicas', children: clinicChildren },
+        { icon: Users, text: 'Usuários', key: 'usuarios', children: userChildren },
+        { icon: Megaphone, text: 'Campanhas', to: '/campaigns' },
+        { icon: Send, text: 'Comunicação', key: 'comunicacao', children: communicationChildren },
+        ...(auditChildren.length ? [{ icon: ClipboardList, text: 'Auditoria', key: 'auditoria', children: auditChildren }] : []),
+      ],
+    },
+    // A Lia é um produto próprio (IA), por isso tem categoria separada.
+    {
+      title: 'Lia',
+      links: isAdmin ? [
+        { icon: Sparkles, text: 'Uso e tokens', to: '/lia' },
+        { icon: ShieldAlert, text: 'Erros e qualidade', to: '/lia/quality' },
+        { icon: MessageSquareHeart, text: 'Feedbacks', to: '/lia/feedback' },
+      ] : [],
+    },
+  ]
+
+  // Poderes exclusivos do super admin (gestão de quem acessa o painel), não fazem parte da operação do sistema.
+  if (isSuper) {
+    sections.push({ title: 'Super admin', links: [{ icon: UserCog, text: 'Equipe Admin', to: '/team' }] })
   }
 
-  // Seção Gestão
-  const gestaoSection = {
-    title: 'Gestão',
-    links: [
-      { icon: Users, text: 'Usuários', to: '/users' },
-      { icon: UserPlus, text: 'Convites', to: '/invitations' },
-      { icon: Building, text: 'Clínicas', to: '/clinics' },
-      { icon: Megaphone, text: 'Campanhas', to: '/campaigns' },
-      ...(['super admin', 'admin'].includes(authStore.user?.role) ? [{ icon: HardDrive, text: 'Armazenamento', to: '/storage' }] : []),
-      { icon: CreditCard, text: 'Assinaturas', to: '/subscriptions' },
-      ...(authStore.user?.role === 'super admin' ? [{ icon: Shield, text: 'Equipe Admin', to: '/team' }] : []),
-    ]
-  }
-  
-  // Seção Comunicação / Outros
-  const comunicacaoSection = {
-    title: 'Comunicação',
-    links: [
-      { icon: Bell, text: 'Notificações', to: '/notifications' },
-      { icon: MessageSquare, text: 'WhatsApp', to: '/whatsapp' },
-      { icon: Star, text: 'Avaliações', to: '/surveys' },
-      ...(['super admin', 'admin'].includes(authStore.user?.role) ? [{ icon: MessageSquare, text: 'Qualidade da Lia', to: '/lia/feedback' }] : [])
-    ]
-  }
-
-  const auditoriaSection = {
-    title: 'Auditoria',
-    links: [
-      ...(['super admin', 'admin'].includes(authStore.user?.role) ? [{ icon: ScrollText, text: 'Auditoria do sistema', to: '/audit/system' }] : []),
-      ...(authStore.user?.role === 'super admin' ? [{ icon: BadgeDollarSign, text: 'Auditoria financeira', to: '/audit/financial' }] : [])
-    ]
-  }
-
-  return [principalSection, gestaoSection, comunicacaoSection, auditoriaSection].filter(section => section.links.length)
+  return sections.filter(section => section.links.length)
 })
+
+// Abre sozinho o grupo da página atual (ex.: /clinics/123 abre "Clínicas").
+watch([() => route.path, sidebarSections], () => {
+  for (const section of sidebarSections.value) {
+    for (const link of section.links) {
+      if (link.children && isParentActive(link.children) && !expandedItems.value.includes(link.key)) expandedItems.value.push(link.key)
+    }
+  }
+}, { immediate: true })
 
 </script>
 
@@ -170,7 +213,7 @@ const sidebarSections = computed(() => {
       </div>
     </div>
 
-    <nav ref="sidebarNavRef" class="sidebar-nav">
+    <nav ref="sidebarNavRef" class="sidebar-nav" @scroll.passive="updateIndicator">
       <!-- Indicador flutuante que desliza -->
       <div 
         class="sliding-indicator" 
@@ -190,12 +233,15 @@ const sidebarSections = computed(() => {
         
         <ul class="nav-links">
           <li v-for="link in section.links" :key="link.text" class="nav-item">
-            <!-- Item com Submenu (Estrutura mantida do CRM, caso precisemos no futuro) -->
+            <!-- Grupo expansível (igual à sidebar oficial) -->
             <div v-if="link.children" class="nav-item-wrapper">
-              <div
+              <button
+                type="button"
                 class="nav-link parent-link"
                 :class="{ 'active': isParentActive(link.children), 'expanded': isExpanded(link.key) }"
-                @click="toggleExpand(link.key)"
+                :aria-expanded="isExpanded(link.key)"
+                :aria-controls="`submenu-${link.key}`"
+                @click="toggleExpand(link.key, link.children)"
                 :title="isCollapsed ? link.text : ''"
               >
                 <component :is="link.icon" :size="20" stroke-width="2" />
@@ -206,12 +252,14 @@ const sidebarSections = computed(() => {
                   class="chevron-icon"
                   :class="{ 'rotate': isExpanded(link.key) }"
                 />
-              </div>
+              </button>
 
               <!-- Submenu -->
               <div
+                :id="`submenu-${link.key}`"
                 class="submenu-wrapper"
                 :class="{ 'is-open': isExpanded(link.key) && !isCollapsed }"
+                @transitionend="updateIndicator"
               >
                 <ul class="submenu">
                   <li v-for="child in link.children" :key="child.text">
@@ -399,6 +447,21 @@ const sidebarSections = computed(() => {
 }
 .nav-link svg {
   transition: color 0.2s ease, transform 0.2s ease;
+}
+/* Grupo expansível renderizado como <button> */
+.parent-link {
+  width: 100%;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+}
+.parent-link:focus-visible,
+.submenu-link:focus-visible {
+  outline: 2px solid var(--azul-principal, #3b82f6);
+  outline-offset: -2px;
+}
+.nav-link.parent-link.expanded:not(.active) {
+  color: #111827;
 }
 .sidebar.is-collapsed .nav-link {
   justify-content: center;

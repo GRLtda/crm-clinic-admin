@@ -4,7 +4,7 @@
       <slot name="filters" />
     </div>
 
-    <div class="adt-scroll" :style="{ maxHeight: height }">
+    <div class="adt-scroll" :class="{ 'is-empty': isEmpty }" :style="isEmpty ? null : { maxHeight: height }">
       <table class="adt-table">
         <thead>
           <tr>
@@ -130,6 +130,7 @@ const props = defineProps({
 const emit = defineEmits(['row-click', 'page-change', 'update:selectedKeys'])
 
 const isSelected = (row) => props.selectedKeys.includes(row[props.rowKey])
+const isEmpty = computed(() => !props.loading && props.rows.length === 0)
 const allSelected = computed(() => props.rows.length > 0 && props.rows.every(isSelected))
 const someSelected = computed(() => props.rows.some(isSelected) && !allSelected.value)
 
@@ -171,7 +172,6 @@ function toggleAll(checked) {
 .adt-scroll {
   min-height: 16rem;
   overflow: auto;
-  overscroll-behavior: contain;
 }
 .adt-table {
   width: 100%;
@@ -224,9 +224,19 @@ function toggleAll(checked) {
   background: #f0f4fc;
   outline: none;
 }
+.adt-scroll.is-empty {
+  min-height: 0;
+  overflow: hidden;
+}
 .adt-table td.adt-state {
-  padding: 3rem 1rem;
+  padding: 1rem;
   white-space: normal;
+}
+.adt-state :deep(.state-cell) {
+  padding: 2rem 1rem;
+}
+.adt-state :deep(.empty-state-text) {
+  margin-bottom: 0;
 }
 .adt-pagination {
   border-top: 1px solid #e5e7eb;

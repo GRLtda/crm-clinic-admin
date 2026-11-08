@@ -1,6 +1,6 @@
 # Armazenamento no admin
 
-`/storage` aparece no menu Gestão para `admin` e `super admin`. Mostra total
+`/storage` aparece em **Clínicas ▾ > Armazenamento** (ver [Sidebar](SIDEBAR.md)) para `admin` e `super admin`. Mostra total
 ocupado em GB, arquivos que consomem cota e isentos, incluindo assinaturas,
 identidade visual e fotos de perfil. A tabela pagina 20 clínicas por vez,
 ordenadas por nome. A busca literal pelo início do nome tem debounce de 350 ms

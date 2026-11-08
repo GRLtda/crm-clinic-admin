@@ -1,9 +1,9 @@
 <template>
-  <div class="chart-card">
-    <div class="chart-header">
+  <div class="chart-card" :class="{ bare }">
+    <div v-if="!bare" class="chart-header">
       <h3 class="chart-title">{{ title }}</h3>
     </div>
-    <div class="chart-body">
+    <div class="chart-body" :style="bare ? { height, minHeight: height } : null">
       <Line :data="chartData" :options="chartOptions" />
     </div>
   </div>
@@ -40,6 +40,9 @@ const props = defineProps({
     type: String,
     default: 'Gráfico'
   },
+  // Sem cartão nem título: o gráfico preenche o painel que o contém.
+  bare: { type: Boolean, default: false },
+  height: { type: String, default: '240px' },
   categories: {
     type: Array,
     default: () => []
@@ -144,6 +147,15 @@ const chartOptions = {
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
   border-color: #e5e7eb;
+}
+
+.chart-card.bare {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  transform: none;
 }
 
 .chart-header {

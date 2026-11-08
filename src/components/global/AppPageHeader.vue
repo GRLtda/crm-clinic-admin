@@ -54,10 +54,10 @@ defineProps({
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 @media (max-width: 700px) {
   .page-heading { align-items: flex-start; flex-wrap: wrap; }
-  .heading-actions { margin-left: 0; width: 100%; }
+  .heading-actions { margin-left: 0; width: 100%; flex-wrap: wrap; }
 }
 </style>

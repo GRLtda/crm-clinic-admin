@@ -1,6 +1,6 @@
 # Gestão de Equipe (`/team`)
 
-Tela do `crm-clinica-admin` (`src/views/AdminManagementView.vue`) para administrar quem acessa o painel. Aparece no menu como **Equipe Admin** e só para **super admin**; a API também exige super admin em todas as rotas.
+Tela do `crm-clinica-admin` (`src/views/AdminManagementView.vue`) para administrar quem acessa o painel. Aparece no menu na categoria **Super admin > Equipe Admin** (ver [Sidebar](SIDEBAR.md)) e só para **super admin**; a API também exige super admin em todas as rotas.
 
 ## Interface
 

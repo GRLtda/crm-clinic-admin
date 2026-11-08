@@ -29,7 +29,7 @@ it('admin não busca conversa original quando contexto não foi compartilhado', 
   expect(wrapper.text()).toContain('O usuário não compartilhou')
   expect(mocks.get.mock.calls.every(([path]) => !path.includes('conversations'))).toBe(true)
   await wrapper.get('textarea').setValue('Em análise')
-  await wrapper.get('button.primary').trigger('click'); await flushPromises()
+  await wrapper.findAll('button').find(button => button.text().includes('Salvar análise')).trigger('click'); await flushPromises()
   expect(mocks.patch).toHaveBeenCalledWith('/lia/feedback/' + record._id, { status: 'reviewing', note: 'Em análise', version: 1 })
 })
 it('contexto compartilhado é texto escapado e perda de identidade apaga detalhes', async () => {
@@ -37,5 +37,5 @@ it('contexto compartilhado é texto escapado e perda de identidade apaga detalhe
   render(); await flushPromises(); await wrapper.get('tbody button').trigger('click'); await flushPromises()
   expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>'); expect(wrapper.find('img').exists()).toBe(false)
   mocks.auth.user = null; await flushPromises()
-  expect(wrapper.text()).not.toContain('Pergunta fictícia'); expect(wrapper.find('tbody').exists()).toBe(false)
+  expect(wrapper.text()).not.toContain('Pergunta fictícia'); expect(wrapper.text()).not.toContain('Clínica sintética')
 })

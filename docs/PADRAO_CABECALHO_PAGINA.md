@@ -35,6 +35,8 @@
 | Notificações (`/notifications`) | `Bell` |
 | WhatsApp (`/whatsapp`) | `MessageCircle` |
 | Avaliações (`/surveys`) | `Star` |
+| Lia: uso e tokens (`/lia`) | `Sparkles` |
+| Lia: erros e qualidade (`/lia/quality`) | `ShieldAlert` |
 | Auditoria do sistema / financeira | `ShieldCheck` / `WalletCards` |
 
 ## Exceções

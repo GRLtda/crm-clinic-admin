@@ -28,6 +28,8 @@ const routes = [
       requiresAuth: true
     },
     children: [
+      { path: '/lia', name: 'lia-usage', component: () => import('../views/LiaUsageView.vue'), meta: { title: 'Lia: uso e tokens', roles: ['super admin', 'admin'] } },
+      { path: '/lia/quality', name: 'lia-quality', component: () => import('../views/LiaQualityView.vue'), meta: { title: 'Lia: erros e qualidade', roles: ['super admin', 'admin'] } },
       { path: '/lia/feedback', name: 'lia-feedback', component: () => import('../views/LiaFeedbackView.vue'), meta: { title: 'Qualidade da Lia', roles: ['super admin', 'admin'] } },
       { path: '/storage', name: 'storage', component: () => import('../views/StorageView.vue'), meta: { title: 'Armazenamento', roles: ['super admin', 'admin'] } },
       {

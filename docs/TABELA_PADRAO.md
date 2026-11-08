@@ -10,6 +10,8 @@ O visual é o da tabela de **Pacientes** do `crm-clinica` (`PatientsListView.vue
 
 Nenhuma tabela pode criar rolagem na página. O `AppDataTable` limita a área das linhas a uma altura máxima (prop `height`, padrão `calc(100vh - 21rem)`, mínimo de 16rem): o corpo rola **por dentro**, com o cabeçalho fixo, e a paginação fica sempre visível logo abaixo. Assim a navegação entre páginas e a leitura não dependem de rolar a tela.
 
+- O estado vazio nunca gera rolagem: sem linhas, a área não aplica a altura máxima e o vazio ocupa só o espaço do próprio conteúdo (compacto).
+- A área de rolagem não usa `overscroll-behavior: contain`: quando a tabela chega ao topo ou ao fim, a roda do mouse continua rolando a página. Prender a rolagem faz a página parecer travada.
 - Não coloque a tabela dentro de contêineres com altura livre nem remova o `max-height` da área de rolagem.
 - Se houver conteúdo extra acima da tabela (cartões de resumo, avisos), aumente o desconto em `height`, por exemplo `height="calc(100vh - 28rem)"`, até a página inteira caber sem barra de rolagem. Valores já usados: equipe 28rem, avaliações 26rem, armazenamento 36rem, cadastros da campanha 38rem.
 - Toda nova listagem deve ser conferida com a janela em desktop e celular: a barra de rolagem da página não pode aparecer por causa da tabela.
