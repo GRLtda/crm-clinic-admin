@@ -43,3 +43,7 @@ Clínicas criadas pela campanha da feira mostram a tag **Origem: <nome da campan
 ## Aba Lia
 
 A navegação lateral da clínica tem a aba **Lia** (admin e super admin), com o resumo de uso da Lia daquela clínica. Detalhes em [Lia no admin](LIA_ADMIN.md#aba-lia-no-detalhe-da-clínica). `?tab=lia` abre direto nela, como `?tab=storage` no armazenamento.
+
+## Aba Retrospectiva
+
+A aba **Retrospectiva** (todos os papéis administrativos) mostra, por ano, status, liberação, versão, se o dono visualizou (e quando, pela primeira vez) e os compartilhamentos, com o JSON dos stories. Detalhes em [Retrospectiva](RETROSPECTIVA.md). `?tab=retrospective` abre direto nela.

@@ -6,7 +6,7 @@ export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   test: {
     environment: "jsdom",
-    include: ["tests/storage.spec.js", "tests/lia-feedback.spec.js"],
+    include: ["tests/storage.spec.js", "tests/lia-feedback.spec.js", "tests/retrospective.spec.js"],
     clearMocks: true,
   },
 });

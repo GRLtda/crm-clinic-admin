@@ -52,6 +52,7 @@
           <button type="button" class="clinic-tab-button" disabled aria-disabled="true"><ShieldCheck :size="18" /> Auditoria</button>
           <button v-if="['super admin', 'admin'].includes(authStore.user?.role)" type="button" class="clinic-tab-button" :class="{ active: activeTab === 'storage' }" @click="activeTab = 'storage'"><HardDrive :size="18" /> Armazenamento</button>
           <button v-if="canSeeAdminTabs" type="button" class="clinic-tab-button" :class="{ active: activeTab === 'lia' }" @click="activeTab = 'lia'"><Sparkles :size="18" /> Lia</button>
+          <button type="button" class="clinic-tab-button" :class="{ active: activeTab === 'retrospective' }" @click="activeTab = 'retrospective'"><Gift :size="18" /> Retrospectiva</button>
         </aside>
         <div class="clinic-tab-content">
       <div v-if="activeTab === 'details'" class="detail-grid">
@@ -164,6 +165,7 @@
       </div>
       <StoragePanel v-else-if="activeTab === 'storage'" :clinic-id="String(clinic._id)" />
       <ClinicLiaPanel v-else-if="activeTab === 'lia' && canSeeAdminTabs" :clinic-id="String(clinic._id)" />
+      <ClinicRetrospectivePanel v-else-if="activeTab === 'retrospective'" :clinic-id="String(clinic._id)" />
       <section v-else-if="activeTab === 'subscription'" class="subscription-panel">
         <div class="subscription-panel-header"><div><h2>Assinatura</h2><p>Gerencie o plano, o status do pagamento e a taxa de instalação.</p></div><span class="status-tag" :class="statusClasses[displaySubscriptionStatus] || 'status-gray'">{{ statusLabels[displaySubscriptionStatus] || 'Sem assinatura' }}</span></div>
         <div class="subscription-form-grid">
@@ -262,8 +264,9 @@ import SideDrawer from '../components/global/SideDrawer.vue'
 import AppSelect from '../components/global/AppSelect.vue'
 import StoragePanel from '../components/pages/storage/StoragePanel.vue'
 import ClinicLiaPanel from '../components/pages/clinics/ClinicLiaPanel.vue'
+import ClinicRetrospectivePanel from '../components/pages/clinics/ClinicRetrospectivePanel.vue'
 import { campaignLabel } from '../utils/signupCampaigns.js'
-import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, Edit2, X, ShieldCheck, HardDrive, Sparkles } from 'lucide-vue-next'
+import { ArrowLeft, Loader2, Building2, User, AlertTriangle, Crown, Edit2, X, ShieldCheck, HardDrive, Sparkles, Gift } from 'lucide-vue-next'
 
 const store = useClinicsStore()
 const authStore = useAuthStore()
@@ -274,7 +277,7 @@ const displaySubscriptionStatus = computed(() => clinic.value?.isTrialAccount &&
 const feeWaived = computed(() => Boolean(clinic.value?.installationFeeWaived || clinic.value?.installationFeeCanRestore))
 const loadingAction = ref(false)
 const canSeeAdminTabs = computed(() => ['super admin', 'admin'].includes(authStore.user?.role))
-const activeTab = ref(['storage', 'lia'].includes(route.query.tab) && canSeeAdminTabs.value ? route.query.tab : 'details')
+const activeTab = ref(route.query.tab === 'retrospective' ? 'retrospective' : ['storage', 'lia'].includes(route.query.tab) && canSeeAdminTabs.value ? route.query.tab : 'details')
 const logoFailed = ref(false)
 const selectedSubscriptionStatus = ref('')
 const selectedTrialEnd = ref('')
