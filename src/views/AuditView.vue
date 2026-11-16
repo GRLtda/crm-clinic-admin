@@ -43,7 +43,7 @@ const actionOptions = [
   ['EMPLOYEE_INVITE_ACCEPT', 'Convite aceito'], ['EMPLOYEE_ROLE_UPDATE', 'Cargo alterado'],
   ['EMPLOYEE_REMOVE', 'Usuário removido'], ['USER_ACTIVATE', 'Usuário ativado'],
   ['USER_DEACTIVATE', 'Usuário desativado'], ['ADMIN_ACCESS_CHANGE', 'Acesso administrativo alterado'],
-  ['ADMIN_DELETE', 'Acesso administrativo removido'],
+  ['ADMIN_DELETE', 'Acesso administrativo removido'], ['STORAGE_RECONCILIATION_RUN', 'Verificação de armazenamento'],
 ]
 const quickFilters = [
   { label: 'Todos', action: '', outcome: '' },

@@ -3,6 +3,7 @@ import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { RouterLink } from "vue-router";
 import { HardDrive, RefreshCw, ArrowRight, Database, Gauge, BadgeCheck, Info } from "lucide-vue-next";
 import api from "@/utils/api";
+import { useAuthStore } from "@/stores/auth.js";
 import {
   formatGB,
   formatSize,
@@ -21,6 +22,31 @@ import AppEmptyState from "@/components/global/AppEmptyState.vue";
 import emptyArt from "@/assets/illustrations/storage-empty.svg?raw";
 
 const props = defineProps({ clinicId: { type: String, default: "" } });
+const authStore = useAuthStore();
+const isSuperAdmin = computed(() => authStore.user?.role === "super admin");
+const reconciling = ref(false);
+const reconcileMessage = ref("");
+async function runReconciliation() {
+  const scope = props.clinicId ? "desta clínica" : "de todas as clínicas";
+  if (!window.confirm(`Executar agora a verificação de armazenamento ${scope}? A ação ficará registrada no log de sistema.`)) return;
+  reconciling.value = true;
+  reconcileMessage.value = "";
+  error.value = "";
+  try {
+    if (props.clinicId) {
+      const { data } = await api.post(`/storage/clinics/${props.clinicId}/reconcile`);
+      summary.value = data;
+      reconcileMessage.value = "Verificação concluída.";
+    } else {
+      await api.post("/storage/reconcile");
+      reconcileMessage.value = "Verificação iniciada. O resultado aparece no log de sistema.";
+    }
+  } catch (err) {
+    error.value = err?.response?.data?.message || storageError(err);
+  } finally {
+    reconciling.value = false;
+  }
+}
 const summary = ref(null);
 const clinicColumns = [
   { key: "name", label: "Clínica" },
@@ -194,6 +220,9 @@ onBeforeUnmount(() => {
       :icon="HardDrive"
     >
       <template #actions>
+        <AppButton v-if="isSuperAdmin" :disabled="reconciling || loading" @click="runReconciliation"
+          ><Database :size="16" /> {{ reconciling ? "Verificando..." : "Rodar verificação" }}</AppButton
+        >
         <AppButton :disabled="loading || filesLoading" @click="refresh"
           ><RefreshCw :size="16" /> Atualizar</AppButton
         >
@@ -210,10 +239,14 @@ onBeforeUnmount(() => {
           }}
         </p>
       </div>
+      <AppButton v-if="isSuperAdmin" :disabled="reconciling || loading" @click="runReconciliation"
+        ><Database :size="16" /> {{ reconciling ? "Verificando..." : "Rodar verificação" }}</AppButton
+      >
       <AppButton :disabled="loading || filesLoading" @click="refresh"
         ><RefreshCw :size="16" /> Atualizar</AppButton
       >
     </header>
+    <p v-if="reconcileMessage" class="storage-check-schedule" role="status">{{ reconcileMessage }}</p>
     <div v-if="error" class="storage-error" role="alert">
       {{ error }}
       <AppButton size="sm" @click="load">Tentar novamente</AppButton>
