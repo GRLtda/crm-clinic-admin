@@ -304,6 +304,31 @@ onBeforeUnmount(() => {
         <p v-else-if="!summary.ready" class="storage-warning" role="status">
           Inventário em atualização. Os totais podem estar incompletos.
         </p>
+        <div
+          v-if="!summary.blocked && summary.blockInfo?.issues?.length"
+          class="storage-warning"
+          role="status"
+        >
+          <strong>Divergências encontradas na verificação</strong>
+          <small>Não bloqueiam o envio de arquivos pela clínica.</small>
+          <p v-for="item in summary.blockInfo.issues" :key="item.reason">
+            {{ item.message
+            }}<span v-if="item.count > 1"> ({{ item.count }} ocorrências)</span>
+            <small v-if="item.keys?.length" class="block-reason">{{
+              item.keys.join(", ")
+            }}</small>
+          </p>
+        </div>
+        <p class="storage-check-schedule">
+          Última verificação:
+          {{
+            summary.lastCheckedAt
+              ? new Date(summary.lastCheckedAt).toLocaleString("pt-BR")
+              : "ainda não executada"
+          }}
+          · Roda todo dia às 00:00 (Brasília). Próxima:
+          {{ new Date(summary.nextCheckAt).toLocaleString("pt-BR") }}
+        </p>
         <div class="storage-categories">
           <div
             v-for="item in categories"
@@ -348,10 +373,10 @@ onBeforeUnmount(() => {
         <template #cell-exempt="{ row }">{{ formatSize(row.exemptBytes) }}</template>
         <template #cell-inventory="{ row }">
           <StatusBadge
-            :variant="row.blocked ? 'danger' : row.ready ? 'success' : 'neutral'"
-            :label="row.blocked ? 'Bloqueado' : row.ready ? 'Verificado' : 'Em atualização'"
+            :variant="row.blocked ? 'danger' : row.blockInfo?.issues?.length ? 'warning' : row.ready ? 'success' : 'neutral'"
+            :label="row.blocked ? 'Bloqueado' : row.blockInfo?.issues?.length ? 'Com divergências' : row.ready ? 'Verificado' : 'Em atualização'"
           />
-          <small v-if="row.blocked" class="block-reason">{{
+          <small v-if="row.blocked || row.blockInfo?.issues?.length" class="block-reason">{{
             row.blockInfo?.issues?.map((item) => item.message).join("; ") ||
             "Motivo não registrado. Consulte o detalhe da clínica."
           }}</small>

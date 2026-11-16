@@ -11,7 +11,7 @@
   const props = defineProps({
     variant: {
       type: String,
-      default: 'neutral' // 'success', 'danger', 'neutral'
+      default: 'neutral' // 'success', 'danger', 'warning', 'neutral'
     },
     label: {
       type: String,
@@ -58,6 +58,14 @@
     background-color: #ef4444; /* Vermelho */
   }
   
+  .variant-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+  .variant-warning .dot {
+    background-color: #f59e0b;
+  }
+
   /* Neutral */
   .variant-neutral {
     background-color: #f3f4f6; /* Cinza claro */
