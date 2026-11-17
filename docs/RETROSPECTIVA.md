@@ -19,8 +19,15 @@ Fonte: `GET /admin/clinics/:clinicId/retrospectives` (lista, sem os stories) e
 - **Ver dados gerados**: abre um drawer com o JSON do snapshot (ano, design, variação de texto,
   período, mês em andamento e stories). O rastreio não entra no JSON, já que aparece no cartão.
 
-Estado vazio: "Nenhuma retrospectiva gerada para esta clínica". Falha de carregamento mostra a
+Estado vazio: "Nenhuma retrospectiva gerada para esta clínica" (com o botão **Fazer retrospectiva** para quem pode gerar). Falha de carregamento mostra a
 mensagem no lugar dos cartões; "Atualizar" tenta de novo.
+
+## Gerar e publicar (só super admin e admin)
+
+- **Fazer retrospectiva** (sem nenhuma retrospectiva): `POST /admin/clinics/:clinicId/retrospectives/generate`. Cria o **rascunho**; o dono não vê nada.
+- **Gerar novamente** (rascunho/agendada): recalcula com `force`, mantendo o rastreio. Publicada nunca é regerada.
+- **Publicar retrospectiva**: pede confirmação ("o dono passa a ver o banner e o atalho") e chama `POST /admin/retrospectives/:id/publish`. Vale só para aquela clínica.
+- Sucesso e erro aparecem em uma faixa no topo da aba, com a mensagem em português devolvida pela API (ex.: clínica sem atendimentos no período). Suporte só consulta: os botões não aparecem.
 
 Fora de escopo por enquanto: coluna na lista de clínicas, tela própria e card no dashboard.
 

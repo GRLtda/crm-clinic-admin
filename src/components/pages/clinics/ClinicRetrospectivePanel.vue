@@ -1,9 +1,10 @@
 <script setup>
 // Aba "Retrospectiva" do detalhe da clínica (docs/RETROSPECTIVA.md).
 // Um cartão por ano: status, liberação, versão, visualização e compartilhamentos; JSON dos stories no drawer.
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { CalendarClock, Eye, FileJson, Gift, Loader2, RefreshCw, Share2 } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { CalendarClock, Eye, FileJson, Gift, Loader2, RefreshCw, Rocket, Share2, Sparkles } from 'lucide-vue-next'
 import api from '../../../utils/api'
+import { useAuthStore } from '../../../stores/auth'
 import AppButton from '../../global/AppButton.vue'
 import AppEmptyState from '../../global/AppEmptyState.vue'
 import SideDrawer from '../../global/SideDrawer.vue'
@@ -62,6 +63,46 @@ async function openDetail(item) {
 }
 const closeDetail = () => { detail.value.open = false }
 
+// Gerar e publicar: só super admin e admin (suporte apenas consulta).
+const authStore = useAuthStore()
+const canWrite = computed(() => ['super admin', 'admin'].includes(authStore.user?.role))
+const generating = ref(false)
+const publishingId = ref('')
+const confirmingId = ref('')
+const feedback = ref({ type: '', text: '' })
+
+const apiMessage = (e, fallback) => e?.response?.data?.message || fallback
+
+async function generate({ force = false } = {}) {
+  generating.value = true
+  feedback.value = { type: '', text: '' }
+  try {
+    const { data } = await api.post(`/clinics/${props.clinicId}/retrospectives/generate`, { force })
+    feedback.value = { type: 'success', text: data?.message || 'Retrospectiva gerada como rascunho.' }
+    await load()
+  } catch (e) {
+    feedback.value = { type: 'error', text: apiMessage(e, 'Não foi possível gerar a retrospectiva desta clínica agora. Tente de novo em instantes.') }
+  } finally {
+    generating.value = false
+  }
+}
+
+async function publish(item) {
+  publishingId.value = item._id
+  feedback.value = { type: '', text: '' }
+  try {
+    const { data } = await api.post(`/retrospectives/${item._id}/publish`)
+    feedback.value = { type: 'success', text: data?.message || 'Retrospectiva publicada.' }
+    confirmingId.value = ''
+    await load()
+  } catch (e) {
+    confirmingId.value = ''
+    feedback.value = { type: 'error', text: apiMessage(e, 'Não foi possível publicar a retrospectiva agora. Tente de novo em instantes.') }
+  } finally {
+    publishingId.value = ''
+  }
+}
+
 watch(() => props.clinicId, load)
 onMounted(load)
 onBeforeUnmount(() => { version++ })
@@ -74,14 +115,19 @@ onBeforeUnmount(() => { version++ })
         <h2><Gift :size="20" />Retrospectiva</h2>
         <p>Retrospectivas anuais geradas para esta clínica: liberação, visualização pelo dono e compartilhamentos.</p>
       </div>
-      <AppButton :loading="loading" @click="load"><RefreshCw :size="16" /> Atualizar</AppButton>
+      <div class="head-actions">
+        <AppButton v-if="canWrite && !loading && !error && !items.length" variant="primary" :loading="generating" @click="generate()"><Sparkles :size="16" /> Fazer retrospectiva</AppButton>
+        <AppButton :loading="loading" @click="load"><RefreshCw :size="16" /> Atualizar</AppButton>
+      </div>
     </header>
+
+    <p v-if="feedback.text" class="feedback" :class="feedback.type" :role="feedback.type === 'error' ? 'alert' : 'status'">{{ feedback.text }}</p>
 
     <p v-if="error" class="state-error" role="alert">{{ error }}</p>
 
     <div v-else-if="loading && !items.length" class="loading" role="status"><Loader2 :size="18" class="spin" /> Carregando retrospectivas…</div>
 
-    <AppEmptyState v-else-if="!items.length" class="empty" :icon="Gift" title="Nenhuma retrospectiva gerada para esta clínica" text="Quando o script anual gerar a retrospectiva desta clínica, ela aparece aqui com o status e o acompanhamento." />
+    <AppEmptyState v-else-if="!items.length" class="empty" :icon="Gift" title="Nenhuma retrospectiva gerada para esta clínica" :text="canWrite ? 'Clique em Fazer retrospectiva para gerar o rascunho. O dono só vê depois que você publicar.' : 'Quando a retrospectiva desta clínica for gerada, ela aparece aqui com o status e o acompanhamento.'" />
 
     <div v-else class="cards">
       <article v-for="item in items" :key="item._id" class="card" :aria-label="`Retrospectiva ${item.year}`">
@@ -107,7 +153,18 @@ onBeforeUnmount(() => { version++ })
 
         <footer>
           <span class="muted">Gerada em {{ dateTime(item.generatedAt) }}</span>
-          <AppButton size="sm" @click="openDetail(item)"><FileJson :size="15" /> Ver dados gerados</AppButton>
+          <div class="actions">
+            <AppButton size="sm" @click="openDetail(item)"><FileJson :size="15" /> Ver dados gerados</AppButton>
+            <template v-if="canWrite && item.status !== 'published'">
+              <AppButton size="sm" :loading="generating" :disabled="!!publishingId" @click="generate({ force: true })"><Sparkles :size="15" /> Gerar novamente</AppButton>
+              <template v-if="confirmingId === item._id">
+                <AppButton size="sm" variant="primary" :loading="publishingId === item._id" @click="publish(item)"><Rocket :size="15" /> Confirmar publicação</AppButton>
+                <AppButton size="sm" :disabled="publishingId === item._id" @click="confirmingId = ''">Cancelar</AppButton>
+              </template>
+              <AppButton v-else size="sm" variant="primary" :disabled="generating" @click="confirmingId = item._id"><Rocket :size="15" /> Publicar retrospectiva</AppButton>
+            </template>
+          </div>
+          <p v-if="confirmingId === item._id" class="confirm-note">Ao publicar, o dono desta clínica passa a ver o banner e o atalho da retrospectiva {{ item.year }}.</p>
         </footer>
       </article>
     </div>
@@ -147,6 +204,11 @@ dd.yes { color: #047857; }
 dd.no { color: #64748b; }
 .card footer { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; border-top: 1px solid #f1f5f9; padding-top: 0.85rem; }
 .muted { color: #64748b; font-size: 0.8rem; }
+.head-actions, .actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.confirm-note { flex-basis: 100%; margin: 0; color: #b45309; font-size: 0.8rem; }
+.feedback { margin: 0; border-radius: 0.6rem; padding: 0.7rem 1rem; font-size: 0.85rem; border: 1px solid transparent; }
+.feedback.success { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+.feedback.error { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
 .loading { display: flex; align-items: center; gap: 0.5rem; color: #64748b; font-size: 0.9rem; padding: 1rem 0; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

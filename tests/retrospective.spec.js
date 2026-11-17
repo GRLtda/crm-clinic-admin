@@ -2,8 +2,9 @@ import { expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ClinicRetrospectivePanel from '@/components/pages/clinics/ClinicRetrospectivePanel.vue'
 
-const mocks = vi.hoisted(() => ({ get: vi.fn() }))
-vi.mock('@/utils/api', () => ({ default: { get: mocks.get } }))
+const mocks = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), role: { value: 'admin' } }))
+vi.mock('@/utils/api', () => ({ default: { get: mocks.get, post: mocks.post } }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { role: mocks.role.value } }) }))
 
 const list = [
   {
@@ -81,4 +82,56 @@ it('erro de carregamento mostra mensagem amigável', async () => {
   await flushPromises()
   expect(w.find('[role="alert"]').text()).toContain('Não foi possível carregar as retrospectivas desta clínica')
   w.unmount()
+})
+
+const buttonByText = (w, text) => w.findAll('button').find((b) => b.text().includes(text))
+
+it('sem retrospectiva: "Fazer retrospectiva" gera o rascunho e recarrega a lista', async () => {
+  mocks.role.value = 'admin'
+  mocks.get.mockResolvedValueOnce({ data: { data: [] } })
+  const w = mountPanel()
+  await flushPromises()
+  mocks.post.mockResolvedValueOnce({ data: { message: 'Retrospectiva gerada como rascunho.' } })
+  mocks.get.mockResolvedValueOnce({ data: { data: [list[2]] } })
+  await buttonByText(w, 'Fazer retrospectiva').trigger('click')
+  await flushPromises()
+  expect(mocks.post).toHaveBeenCalledWith('/clinics/c1/retrospectives/generate', { force: false })
+  expect(w.find('.feedback.success').text()).toContain('gerada como rascunho')
+  expect(w.findAll('article.card')).toHaveLength(1)
+  w.unmount()
+})
+
+it('rascunho: publicar pede confirmação e mostra o motivo se a API recusar', async () => {
+  mocks.role.value = 'super admin'
+  mocks.get.mockResolvedValueOnce({ data: { data: [list[2]] } })
+  const w = mountPanel()
+  await flushPromises()
+  expect(buttonByText(w, 'Gerar novamente')).toBeTruthy()
+  await buttonByText(w, 'Publicar retrospectiva').trigger('click')
+  expect(mocks.post).not.toHaveBeenCalledWith('/retrospectives/r2025/publish')
+  expect(w.text()).toContain('o dono desta clínica passa a ver')
+  mocks.post.mockRejectedValueOnce({ response: { data: { message: 'Esta retrospectiva não tem nenhum story para mostrar.' } } })
+  await buttonByText(w, 'Confirmar publicação').trigger('click')
+  await flushPromises()
+  expect(mocks.post).toHaveBeenCalledWith('/retrospectives/r2025/publish')
+  expect(w.find('.feedback.error').text()).toContain('nenhum story')
+  w.unmount()
+})
+
+it('suporte só consulta e publicada não tem botões de gerar/publicar', async () => {
+  mocks.role.value = 'suporte'
+  mocks.get.mockResolvedValueOnce({ data: { data: [list[2]] } })
+  const w = mountPanel()
+  await flushPromises()
+  expect(buttonByText(w, 'Publicar retrospectiva')).toBeUndefined()
+  expect(buttonByText(w, 'Gerar novamente')).toBeUndefined()
+  w.unmount()
+
+  mocks.role.value = 'admin'
+  mocks.get.mockResolvedValueOnce({ data: { data: [list[0]] } })
+  const w2 = mountPanel()
+  await flushPromises()
+  expect(buttonByText(w2, 'Publicar retrospectiva')).toBeUndefined()
+  expect(buttonByText(w2, 'Gerar novamente')).toBeUndefined()
+  w2.unmount()
 })
